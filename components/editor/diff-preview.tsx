@@ -18,7 +18,7 @@ interface Hunk {
   startIndex: number;
 }
 
-export function DiffPreview({original, updated, onAccept, onReject, isVisible}: DiffPreviewProps) {
+export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpdate, isVisible}: DiffPreviewProps) {
   const [acceptedHunks, setAcceptedHunks] = useState<Set<number>>(new Set());
 
   // 1. Detect Hunks

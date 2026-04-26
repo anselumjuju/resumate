@@ -5,7 +5,7 @@ import { LatexEditor } from "@/components/editor/latex-editor";
 import { PdfPreview } from "@/components/preview/pdf-preview";
 import { compilePdf } from "@/actions/compile-pdf";
 
-const defaultLatex = `\\documentclass[a4paper,10pt]{article}
+const defaultResume = `\\documentclass[a4paper,10pt]{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage[margin=1in]{geometry}
 \\usepackage{hyperref}
@@ -33,8 +33,28 @@ University of ABC
 \\end{document}
 `;
 
+const defaultCoverLetter = `\\documentclass[11pt]{letter}
+\\usepackage[margin=1in]{geometry}
+
+\\begin{document}
+\\begin{letter}{Hiring Manager \\\\ Company Name \\\\ Company Address}
+\\opening{Dear Hiring Manager,}
+
+I am writing to express my interest in the [Position Name] position at [Company Name]. With my background in software engineering and my passion for [Industry/Tech], I am confident that I would be a valuable asset to your team.
+
+At my previous role, I [Significant Achievement]. This experience has equipped me with the skills to [Specific Skill/Task].
+
+Thank you for your time and consideration. I look forward to the possibility of discussing how my skills and experience can benefit [Company Name].
+
+\\closing{Sincerely,\\\\John Doe}
+\\end{letter}
+\\end{document}
+`;
+
 export function Workspace() {
-  const [code, setCode] = useState("");
+  const [activeTab, setActiveTab] = useState<'resume' | 'cover_letter'>('resume');
+  const [resumeCode, setResumeCode] = useState("");
+  const [clCode, setClCode] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,18 +62,23 @@ export function Workspace() {
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
 
   useEffect(() => {
-    const saved = localStorage.getItem("base_resume");
-    setCode(saved || defaultLatex);
+    const savedResume = localStorage.getItem("base_resume");
+    const savedCL = localStorage.getItem("base_cover_letter");
+    setResumeCode(savedResume || defaultResume);
+    setClCode(savedCL || defaultCoverLetter);
     setIsHydrated(true);
   }, []);
 
-  const saveAndCompile = async (currentCode: string) => {
+  const currentCode = activeTab === 'resume' ? resumeCode : clCode;
+  const setCode = activeTab === 'resume' ? setResumeCode : setClCode;
+
+  const saveAndCompile = async (codeToSave: string, tab: 'resume' | 'cover_letter') => {
     setSaveStatus("saving");
-    localStorage.setItem("base_resume", currentCode);
+    localStorage.setItem(tab === 'resume' ? "base_resume" : "base_cover_letter", codeToSave);
     setIsLoading(true);
     setError(null);
 
-    const result = await compilePdf(currentCode);
+    const result = await compilePdf(codeToSave);
 
     if (result.success && result.pdfBase64) {
       setPdfBase64(result.pdfBase64);
@@ -71,11 +96,11 @@ export function Workspace() {
   useEffect(() => {
     if (!isHydrated) return;
     setSaveStatus("unsaved");
-    const timer = setTimeout(() => saveAndCompile(code), 1500);
+    const timer = setTimeout(() => saveAndCompile(currentCode, activeTab), 1500);
     return () => clearTimeout(timer);
-  }, [code, isHydrated]);
+  }, [currentCode, activeTab, isHydrated]);
 
-  const handleManualSave = () => saveAndCompile(code);
+  const handleManualSave = () => saveAndCompile(currentCode, activeTab);
 
   if (!isHydrated) {
     return (
@@ -99,9 +124,33 @@ export function Workspace() {
 
       {/* ── Toolbar ───────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-5 py-2 border-b border-neutral-200/60 dark:border-neutral-800/60 bg-[#f8f8f8]/90 dark:bg-[#0d0d0d]/90 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-2.5">
-          <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Base Template</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide bg-neutral-200/70 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">.tex</span>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2.5">
+            <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Base Template</span>
+          </div>
+          
+          <div className="flex bg-neutral-200/60 dark:bg-neutral-800/60 rounded-lg p-0.5 gap-0.5">
+            <button
+              onClick={() => setActiveTab('resume')}
+              className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                activeTab === 'resume' 
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-sm' 
+                : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+              }`}
+            >
+              Resume
+            </button>
+            <button
+              onClick={() => setActiveTab('cover_letter')}
+              className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                activeTab === 'cover_letter' 
+                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-sm' 
+                : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+              }`}
+            >
+              Cover Letter
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -139,7 +188,7 @@ export function Workspace() {
             <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-600">LaTeX Source</span>
           </div>
           <div className="flex-1 overflow-hidden bg-[#1e1e1e]">
-            <LatexEditor value={code} onChange={setCode} />
+            <LatexEditor value={currentCode} onChange={setCode} />
           </div>
         </section>
 

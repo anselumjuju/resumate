@@ -21,7 +21,7 @@ export default function Home() {
     if (saved) {
       try {
         setJobs(JSON.parse(saved));
-      } catch (e) {
+      } catch {
         console.error("Failed to parse job history");
       }
     }

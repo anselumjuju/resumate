@@ -19,7 +19,7 @@ export async function compilePdf(latexString: string): Promise<CompilePdfResult>
   // Create a unique temporary directory
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "resumate-"));
   const texFilePath = path.join(tempDir, "resume.tex");
-  
+
   try {
     // Write LaTeX content to file
     await fs.writeFile(texFilePath, latexString, "utf-8");
@@ -29,10 +29,10 @@ export async function compilePdf(latexString: string): Promise<CompilePdfResult>
     // -no-shell-escape disables execution of dangerous external commands
     // -output-directory ensures all auxiliary files stay in the temp dir
     const command = `pdflatex -interaction=nonstopmode -no-shell-escape -output-directory="${tempDir}" "${texFilePath}"`;
-    
+
     let logs = "";
     try {
-      const { stdout, stderr } = await execAsync(command, { 
+      const { stdout, stderr } = await execAsync(command, {
         cwd: tempDir,
         timeout: 60000 // 60 seconds timeout to prevent hanging, allows MiKTeX auto-install
       });
@@ -40,7 +40,7 @@ export async function compilePdf(latexString: string): Promise<CompilePdfResult>
     } catch (execError: any) {
       // pdflatex returns non-zero exit code if compilation fails
       logs = (execError.stdout || "") + "\n" + (execError.stderr || "");
-      
+
       // If error is related to command not found
       if (execError.code === 127 || execError.message.includes("not recognized") || execError.message.includes("ENOENT")) {
         return {
@@ -49,7 +49,7 @@ export async function compilePdf(latexString: string): Promise<CompilePdfResult>
           logs: execError.message
         };
       }
-      
+
       return {
         success: false,
         error: "LaTeX compilation failed. Please check the logs for syntax errors.",
@@ -59,7 +59,7 @@ export async function compilePdf(latexString: string): Promise<CompilePdfResult>
 
     // Read the generated PDF
     const pdfPath = path.join(tempDir, "resume.pdf");
-    
+
     try {
       const pdfBuffer = await fs.readFile(pdfPath);
       const pdfBase64 = pdfBuffer.toString("base64");
@@ -70,6 +70,7 @@ export async function compilePdf(latexString: string): Promise<CompilePdfResult>
         logs
       };
     } catch (readError: any) {
+      console.error("Failed to read PDF file:", readError);
       return {
         success: false,
         error: "Compilation completed, but PDF file was not found. The LaTeX code might not have produced any output pages.",

@@ -12,33 +12,31 @@ export function Header() {
       <Link
         href={href}
         className={[
-          'relative text-sm font-medium transition-colors duration-150 px-1 py-0.5',
-          active ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200',
+          'relative text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 px-4 py-2 rounded-xl',
+          active ? 'text-accent bg-accent/10 border border-accent/20' : 'text-white/40 hover:text-white/80 hover:bg-white/5',
         ].join(' ')}>
         {label}
-        {active && <span className='absolute -bottom-px left-0 right-0 h-px bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full' />}
       </Link>
     );
   };
 
   return (
-    <header className='sticky top-0 z-50 w-full border-b border-neutral-200/50 dark:border-neutral-800/50 bg-[#f8f8f8]/85 dark:bg-[#0d0d0d]/85 backdrop-blur-md shrink-0'>
-      <div className='flex h-13 items-center justify-between px-6 w-full mx-auto'>
+    <header className='sticky top-0 z-50 w-full border-b border-white/5 bg-black/20 backdrop-blur-xl shrink-0'>
+      <div className='flex h-14 items-center justify-between px-6 w-full mx-auto'>
         <Link href='/' className='flex items-center gap-2.5 group'>
-          <div className='bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-md p-1.5 group-hover:scale-105 transition-transform shadow-sm'>
-            <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth='2.5'
-                d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.ws293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'></path>
-            </svg>
-          </div>
-          <span className='font-bold text-[15px] tracking-tight text-neutral-900 dark:text-neutral-100'>resumate</span>
+        <div className='w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-black shadow-[0_0_20px_rgba(136,255,0,0.4)] group-hover:scale-105 group-hover:rotate-6 transition-all duration-500'>
+          <svg className='w-5 h-5' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+            <path d='M12 2L2 7l10 5 10-5-10-5z' />
+            <path d='M2 17l10 5 10-5' />
+            <path d='M2 12l10 5 10-5' />
+            <circle cx='12' cy='7' r='1' fill='currentColor' />
+          </svg>
+        </div>
+          <span className='font-black text-lg tracking-tighter text-white'>resumate</span>
         </Link>
 
-        <nav className='flex items-center gap-6'>
-          {navLink('/editor', 'Base Editor')}
+        <nav className='flex items-center gap-3'>
+          {navLink('/editor', 'Editor')}
           {navLink('/workspace', 'Transformer')}
         </nav>
       </div>

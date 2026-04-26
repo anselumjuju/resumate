@@ -12,4 +12,5 @@ export interface GeminiState {
   activeKeyId: string | null;
   selectedModel: GeminiModel;
   autoSwitch: boolean;
+  lastResetAt?: number;
 }

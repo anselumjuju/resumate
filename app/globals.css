@@ -2,8 +2,32 @@
 
 /* ─── Base tokens ─────────────────────────────────────────── */
 :root {
-  --bg-base-light: #f8f8f8;
-  --bg-base-dark:  #0d0d0d;
+  --bg-light: #ffffff;
+  --bg-dark:  #000000;
+  --accent: #88FF00; /* Refined lime */
+  --secondary: #00E0FF; /* Electric cyan */
+  --border-muted: rgba(255, 255, 255, 0.1);
+}
+
+@layer utilities {
+  .bg-mesh {
+    background-color: var(--bg-dark);
+    background-attachment: fixed;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(82, 100%, 50%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(188, 100%, 50%, 0.1) 0px, transparent 50%);
+  }
+
+  .bg-grid {
+    background-size: 40px 40px;
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  }
+
+  .text-accent { color: var(--accent); }
+  .bg-accent { background-color: var(--accent); }
+  .border-accent { border-color: var(--accent); }
 }
 
 /* ─── Smooth scrolling everywhere ────────────────────────── */
@@ -59,4 +83,8 @@ a, button {
   transition-property: color, background-color, border-color, opacity, transform, box-shadow;
   transition-duration: 150ms;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes scan {
+  from { top: -10%; }
+  to { top: 110%; }
 }

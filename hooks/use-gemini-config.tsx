@@ -10,6 +10,7 @@ const DEFAULT_STATE: GeminiState = {
   activeKeyId: null,
   selectedModel: 'gemini-2.5-flash',
   autoSwitch: false,
+  lastResetAt: Date.now(),
 };
 
 interface GeminiConfigContextType extends GeminiState {
@@ -29,10 +30,11 @@ export function GeminiConfigProvider({children}: {children: ReactNode}) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        setState(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        setState(parsed);
       } catch (e) {
         console.error('Failed to parse gemini config', e);
       }
@@ -42,9 +44,42 @@ export function GeminiConfigProvider({children}: {children: ReactNode}) {
 
   useEffect(() => {
     if (isLoaded) {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
   }, [state, isLoaded]);
+
+  // Daily Reset Logic (1 PM IST = 07:30 UTC)
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const checkReset = () => {
+      const now = new Date();
+      const lastReset = state.lastResetAt ? new Date(state.lastResetAt) : new Date(0);
+      
+      const resetTimeToday = new Date(now);
+      resetTimeToday.setUTCHours(7, 30, 0, 0);
+
+      // If we are past today's 1 PM IST and last reset was before today's 1 PM IST
+      if (now.getTime() >= resetTimeToday.getTime() && lastReset.getTime() < resetTimeToday.getTime()) {
+        setState(prev => ({
+          ...prev,
+          lastResetAt: Date.now(),
+          keys: prev.keys.map(k => ({
+            ...k,
+            usageByModel: {
+              'gemini-2.5-flash': 0,
+              'gemini-2.5-pro': 0,
+              'gemini-2.5-flash-lite': 0,
+            }
+          }))
+        }));
+      }
+    };
+
+    checkReset();
+    const interval = setInterval(checkReset, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [isLoaded, state.lastResetAt]);
 
   const addKey = useCallback((key: string, label?: string) => {
     setState((prev) => {
@@ -90,9 +125,8 @@ export function GeminiConfigProvider({children}: {children: ReactNode}) {
   }, []);
 
   const incrementUsage = useCallback((keyId: string, model: GeminiModel) => {
-    setState((prev) => ({
-      ...prev,
-      keys: prev.keys.map((k) =>
+    setState((prev) => {
+      const updatedKeys = prev.keys.map((k) =>
         k.id === keyId ?
           {
             ...k,
@@ -102,8 +136,32 @@ export function GeminiConfigProvider({children}: {children: ReactNode}) {
             },
           }
         : k,
-      ),
-    }));
+      );
+
+      const activeKey = updatedKeys.find(k => k.id === keyId);
+      let nextModel = prev.selectedModel;
+
+      // Auto-switch logic
+      if (prev.autoSwitch && activeKey && activeKey.usageByModel[model] >= 20) {
+        const models: GeminiModel[] = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite'];
+        const currentIndex = models.indexOf(model);
+        
+        // Find next available model that hasn't hit the limit
+        for (let i = 1; i < models.length; i++) {
+          const m = models[(currentIndex + i) % models.length];
+          if (activeKey.usageByModel[m] < 20) {
+            nextModel = m;
+            break;
+          }
+        }
+      }
+
+      return {
+        ...prev,
+        keys: updatedKeys,
+        selectedModel: nextModel
+      };
+    });
   }, []);
 
   return (

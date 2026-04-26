@@ -108,36 +108,36 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
   const originalLines = original.split('\n');
 
   return (
-    <div className='flex flex-col h-full bg-[#1e1e1e] rounded-2xl border border-neutral-800 overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200'>
-      {/* VS Code Style Header */}
-      <div className='px-4 py-2 bg-[#252526] border-b border-neutral-800 flex items-center justify-between'>
-        <div className='flex items-center gap-3'>
-          <div className='flex items-center gap-1'>
-            <div className='w-3 h-3 rounded-full bg-[#ff5f56]' />
-            <div className='w-3 h-3 rounded-full bg-[#ffbd2e]' />
-            <div className='w-3 h-3 rounded-full bg-[#27c93f]' />
+    <div className='flex flex-col h-full bg-black rounded-xl border border-white/20 overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-500'>
+      {/* Code Header */}
+      <div className='px-6 h-12 bg-white/[0.03] border-b border-white/20 flex items-center justify-between'>
+        <div className='flex items-center gap-4'>
+          <div className='flex items-center gap-1.5'>
+            <div className='w-2 h-2 rounded-full bg-white/10' />
+            <div className='w-2 h-2 rounded-full bg-white/10' />
+            <div className='w-2 h-2 rounded-full bg-white/10' />
           </div>
-          <span className='text-[11px] font-medium text-neutral-400 uppercase tracking-widest'>Unified Diff</span>
+          <span className='text-[9px] font-black text-white/20 uppercase tracking-[0.4em]'>Unified Conflict Resolution</span>
         </div>
 
-        <div className='flex items-center gap-3'>
+        <div className='flex items-center gap-4'>
           <button
             onClick={onReject}
-            className='text-xs text-neutral-400 hover:text-neutral-200 transition-colors'
+            className='text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white/60 transition-colors'
           >
-            Discard All
+            Purge All
           </button>
           <button
             onClick={handleFinalApply}
-            className='px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded shadow-lg transition-all active:scale-95'
+            className='px-4 py-1.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-accent transition-all duration-300 active:scale-95 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
           >
-            Apply Changes
+            Commit Merge
           </button>
         </div>
       </div>
 
       {/* Editor Content */}
-      <div className='flex-1 overflow-auto bg-[#1e1e1e] font-mono text-[13px] leading-[1.6] custom-scrollbar p-2'>
+      <div className='flex-1 overflow-auto bg-black font-mono text-[12px] leading-[1.8] custom-scrollbar p-4'>
         {(() => {
           const elements = [];
           let hunkIdx = 0;
@@ -148,13 +148,13 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
             if (hunk && hunk.startIndex === i) {
               const isAccepted = acceptedHunks.has(hunk.id);
               elements.push(
-                <div key={`hunk-${hunk.id}`} className='relative group my-1'>
+                <div key={`hunk-${hunk.id}`} className='relative group my-4 rounded-xl overflow-hidden border border-white/[0.02]'>
                   {/* Floating Action Bar */}
-                  <div className='absolute right-4 top-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex bg-[#333333] border border-neutral-700 rounded shadow-2xl p-0.5 gap-0.5'>
+                  <div className='absolute right-4 top-4 z-10 opacity-0 group-hover:opacity-100 transition-all flex bg-black border border-white/10 rounded-xl shadow-2xl p-1 gap-1'>
                     <button 
                       onClick={() => toggleHunk(hunk.id)}
                       title="Accept Change"
-                      className={`p-1.5 rounded transition-all ${isAccepted ? 'bg-green-600/20 text-green-400' : 'text-neutral-400 hover:bg-white/10 hover:text-green-400'}`}
+                      className={`p-2 rounded-lg transition-all ${isAccepted ? 'bg-accent/20 text-accent' : 'text-white/20 hover:bg-white/5 hover:text-accent'}`}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M20 6L9 17l-5-5" />
@@ -163,7 +163,7 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
                     <button 
                       onClick={() => toggleHunk(hunk.id)}
                       title="Discard Change"
-                      className={`p-1.5 rounded transition-all ${!isAccepted ? 'bg-red-600/20 text-red-400' : 'text-neutral-400 hover:bg-white/10 hover:text-red-400'}`}
+                      className={`p-2 rounded-lg transition-all ${!isAccepted ? 'bg-white/10 text-white/60' : 'text-white/20 hover:bg-white/5 hover:text-white/60'}`}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M18 6L6 18M6 6l12 12" />
@@ -172,21 +172,21 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
                   </div>
 
                   {/* Red (Removed) */}
-                  <div className={`transition-opacity duration-200 ${isAccepted ? 'opacity-30' : 'opacity-100'}`}>
+                  <div className={`transition-all duration-500 ${isAccepted ? 'opacity-20 scale-[0.99] grayscale' : 'opacity-100'}`}>
                     {hunk.original.map((line, li) => (
-                      <div key={`orig-${li}`} className='flex bg-[#4b1818] border-l-4 border-red-500'>
-                        <div className='w-10 shrink-0 flex justify-center text-[#ff8080] select-none text-[11px] opacity-40'>-</div>
-                        <div className='flex-1 px-2 text-[#ff8080] whitespace-pre-wrap break-words'>{line || ' '}</div>
+                      <div key={`orig-${li}`} className='flex bg-red-500/[0.03] border-l-2 border-red-500/20'>
+                        <div className='w-12 shrink-0 flex justify-center text-red-500/30 select-none text-[10px]'>-</div>
+                        <div className='flex-1 px-4 text-red-500/60 whitespace-pre-wrap break-words italic'>{line || ' '}</div>
                       </div>
                     ))}
                   </div>
 
                   {/* Green (Added) */}
-                  <div className={`transition-opacity duration-200 ${!isAccepted ? 'opacity-30' : 'opacity-100'}`}>
+                  <div className={`transition-all duration-500 ${!isAccepted ? 'opacity-20 scale-[0.99] grayscale' : 'opacity-100'}`}>
                     {hunk.updated.map((line, li) => (
-                      <div key={`upd-${li}`} className='flex bg-[#1e3a1e] border-l-4 border-green-500'>
-                        <div className='w-10 shrink-0 flex justify-center text-[#99ff99] select-none text-[11px] opacity-40'>+</div>
-                        <div className='flex-1 px-2 text-[#99ff99] whitespace-pre-wrap break-words'>{line || ' '}</div>
+                      <div key={`upd-${li}`} className='flex bg-accent/[0.03] border-l-2 border-accent/40'>
+                        <div className='w-12 shrink-0 flex justify-center text-accent/40 select-none text-[10px]'>+</div>
+                        <div className='flex-1 px-4 text-accent whitespace-pre-wrap break-words font-bold'>{line || ' '}</div>
                       </div>
                     ))}
                   </div>
@@ -196,9 +196,9 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
               hunkIdx++;
             } else {
               elements.push(
-                <div key={`line-${i}`} className='flex hover:bg-white/5 transition-colors group'>
-                  <div className='w-10 shrink-0 flex justify-center text-neutral-600 select-none text-[11px]'>{i + 1}</div>
-                  <div className='flex-1 px-2 text-neutral-400 whitespace-pre-wrap break-words'>{originalLines[i] || ' '}</div>
+                <div key={`line-${i}`} className='flex hover:bg-white/[0.02] transition-colors group py-0.5'>
+                  <div className='w-12 shrink-0 flex justify-center text-white/10 select-none text-[9px] tabular-nums'>{i + 1}</div>
+                  <div className='flex-1 px-4 text-white/30 whitespace-pre-wrap break-words font-medium'>{originalLines[i] || ' '}</div>
                 </div>
               );
             }
@@ -208,8 +208,8 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
       </div>
       
       {/* Footer hint */}
-      <div className='px-4 py-2 bg-[#1e1e1e] border-t border-neutral-800'>
-        <p className='text-[10px] text-neutral-500 italic'>Hover over changes to see Accept (✓) and Discard (✕) options.</p>
+      <div className='px-6 h-10 bg-black border-t border-white/20 flex items-center'>
+        <p className='text-[8px] font-black text-white/10 uppercase tracking-[0.2em]'>Interactive Merge Protocol Active</p>
       </div>
     </div>
   );

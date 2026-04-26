@@ -1,1 +1,62 @@
 @import "tailwindcss";
+
+/* ─── Base tokens ─────────────────────────────────────────── */
+:root {
+  --bg-base-light: #f8f8f8;
+  --bg-base-dark:  #0d0d0d;
+}
+
+/* ─── Smooth scrolling everywhere ────────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ─── Body base ────────────────────────────────────────────── */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ─── Consistent focus outline reset ─────────────────────── */
+*:focus {
+  outline: none;
+}
+
+/* ─── Scrollbar — minimal and unobtrusive ─────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.25);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 120, 0.45);
+}
+
+/* ─── Typography base ─────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+p, li {
+  line-height: 1.65;
+}
+
+/* ─── Textarea ────────────────────────────────────────────── */
+textarea {
+  field-sizing: content;
+}
+
+/* ─── Transitions ─────────────────────────────────────────── */
+a, button {
+  transition-property: color, background-color, border-color, opacity, transform, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}

@@ -1,7 +1,7 @@
 'use client';
 import React, {useState} from 'react';
 import {useGeminiConfig} from '@/hooks/use-gemini-config';
-import {GeminiModel} from '@/types/ai';
+import {GEMINI_MODELS} from '@/constants/models';
 
 export function GeminiConfigPanel() {
   const {keys, activeKeyId, selectedModel, autoSwitch, isLoaded, lastResetAt, addKey, removeKey, setActiveKey, setModel, setAutoSwitch} = useGeminiConfig();
@@ -48,25 +48,29 @@ export function GeminiConfigPanel() {
         <div className='space-y-4'>
           <label className='block text-[9px] font-black text-white/30 uppercase tracking-[0.3em]'>Inference Engine</label>
           <div className='grid grid-cols-1 gap-2'>
-            {(['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'] as GeminiModel[]).map((m) => {
-              const activeKey = keys.find(k => k.id === activeKeyId);
-              const usage = activeKey?.usageByModel[m] || 0;
-              const isAtLimit = usage >= 20;
-              
+            {GEMINI_MODELS.map((m) => {
+              const activeKey = keys.find((k) => k.id === activeKeyId);
+              const usage = activeKey?.usageByModel[m.id] || 0;
+              const isAtLimit = usage >= m.limit;
+
               return (
                 <button
-                  key={m}
-                  onClick={() => setModel(m)}
+                  key={m.id}
+                  onClick={() => setModel(m.id)}
                   className={`relative px-4 py-2.5 text-[9px] font-black uppercase tracking-widest rounded-xl border transition-all flex items-center justify-between ${
-                    selectedModel === m ?
+                    selectedModel === m.id ?
                       'bg-accent/10 border-accent/40 text-accent shadow-[0_0_20px_rgba(136,255,0,0.1)]'
                     : 'bg-white/5 border-white/5 text-white/40 hover:border-white/20 hover:text-white/60'
                   }`}>
                   <span className='flex items-center gap-2'>
-                    {m.replace('gemini-', '').replace(/-/g, ' ')}
+                    {m.name}
                     {isAtLimit && (
                       <svg className='w-3 h-3 text-red-500 animate-pulse' fill='currentColor' viewBox='0 0 20 20'>
-                        <path fillRule='evenodd' d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z' clipRule='evenodd' />
+                        <path
+                          fillRule='evenodd'
+                          d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z'
+                          clipRule='evenodd'
+                        />
                       </svg>
                     )}
                   </span>
@@ -103,13 +107,18 @@ export function GeminiConfigPanel() {
                 <button onClick={() => setActiveKey(k.id)} className='flex-1 text-left'>
                   <div className='flex items-center gap-3'>
                     <p className='text-[10px] font-black text-white uppercase tracking-widest'>{k.label}</p>
-                    {activeKeyId === k.id ? 
+                    {activeKeyId === k.id ?
                       <div className='w-1.5 h-1.5 rounded-full bg-accent animate-pulse' />
-                    : Object.values(k.usageByModel).some(v => v >= 20) && (
-                      <svg className='w-3 h-3 text-red-500' fill='currentColor' viewBox='0 0 20 20'>
-                        <path fillRule='evenodd' d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z' clipRule='evenodd' />
-                      </svg>
-                    )}
+                    : Object.values(k.usageByModel).some((v) => v >= 20) && (
+                        <svg className='w-3 h-3 text-red-500' fill='currentColor' viewBox='0 0 20 20'>
+                          <path
+                            fillRule='evenodd'
+                            d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z'
+                            clipRule='evenodd'
+                          />
+                        </svg>
+                      )
+                    }
                   </div>
                   <p className='text-[9px] text-white/20 tabular-nums font-mono mt-1 uppercase tracking-widest'>
                     {k.key.slice(0, 4)}••••{k.key.slice(-4)} • Usage: {Object.values(k.usageByModel).reduce((a, b) => a + b, 0)} calls

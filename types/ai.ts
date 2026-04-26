@@ -1,4 +1,6 @@
-export type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.5-flash-lite';
+import { GEMINI_MODELS } from '@/constants/models';
+
+export type GeminiModel = (typeof GEMINI_MODELS)[number]['id'];
 
 export interface GeminiKeyConfig {
   id: string;

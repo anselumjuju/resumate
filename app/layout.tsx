@@ -13,8 +13,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "resumate",
-  description: "AI-powered LaTeX resume optimizer",
+  title: "Resumate | AI-Powered LaTeX Resume Optimizer",
+  description: "Transform your career with high-precision LaTeX resume optimization. Resumate uses advanced AI to align your skills with job requirements in seconds.",
+  keywords: ["resume", "latex", "ai resume", "job optimization", "career tool", "latex resume editor"],
+  authors: [{ name: "Resumate Team" }],
+  openGraph: {
+    title: "Resumate | AI-Powered LaTeX Resume Optimizer",
+    description: "The future of resumes. High-precision LaTeX transformer designed for the modern career.",
+    url: "https://resumate.ai",
+    siteName: "Resumate",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Resumate | AI-Powered LaTeX Resume Optimizer",
+    description: "Transform your career with high-precision LaTeX resume optimization.",
+  },
 };
 
 import { Header } from "@/components/layout/header";

@@ -4,6 +4,7 @@ import React, {useState, useEffect} from 'react';
 import {LatexEditor} from '@/components/editor/latex-editor';
 import {PdfPreview} from '@/components/preview/pdf-preview';
 import {compilePdf} from '@/actions/compile-pdf';
+import {useGeminiConfig} from '@/hooks/use-gemini-config';
 
 const defaultResume = `\\documentclass[a4paper,10pt]{article}
 \\usepackage[utf8]{inputenc}
@@ -52,6 +53,7 @@ Thank you for your time and consideration. I look forward to the possibility of 
 `;
 
 export function Workspace() {
+  const {setIsDirty} = useGeminiConfig();
   const [activeTab, setActiveTab] = useState<'resume' | 'cover_letter'>('resume');
   const [resumeCode, setResumeCode] = useState('');
   const [clCode, setClCode] = useState('');
@@ -60,6 +62,8 @@ export function Workspace() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+  const [isContentOnly, setIsContentOnly] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     const savedResume = localStorage.getItem('base_resume');
@@ -70,7 +74,6 @@ export function Workspace() {
   }, []);
 
   const currentCode = activeTab === 'resume' ? resumeCode : clCode;
-  const setCode = activeTab === 'resume' ? setResumeCode : setClCode;
 
   const saveAndCompile = async (codeToSave: string, tab: 'resume' | 'cover_letter') => {
     setSaveStatus('saving');
@@ -100,7 +103,55 @@ export function Workspace() {
     return () => clearTimeout(timer);
   }, [currentCode, activeTab, isHydrated]);
 
+  // Prevent accidental navigation when unsaved
+  useEffect(() => {
+    const dirty = saveStatus === 'unsaved' || saveStatus === 'saving';
+    setIsDirty(dirty);
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (dirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      setIsDirty(false); // Clean up dirty state on unmount
+    };
+  }, [saveStatus, setIsDirty]);
+
   const handleManualSave = () => saveAndCompile(currentCode, activeTab);
+
+  const handleExport = async () => {
+    setIsDownloading(true);
+    try {
+      const filename = `anselumjuju-master-${activeTab.replace('_', '-')}.pdf`;
+
+      // If we already have a valid PDF base64, use it
+      let data = pdfBase64;
+      if (!data) {
+        const result = await compilePdf(currentCode);
+        if (result.success && result.pdfBase64) {
+          data = result.pdfBase64;
+        } else {
+          throw new Error(result.error || 'Compilation failed');
+        }
+      }
+
+      if (data) {
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${data}`;
+        link.download = filename;
+        link.click();
+      }
+    } catch (err: any) {
+      alert(`Export failed: ${err.message}`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   if (!isHydrated) {
     return (
@@ -144,6 +195,19 @@ export function Workspace() {
               Cover Letter
             </button>
           </div>
+
+          {/* Focus Mode Toggle */}
+          <button
+            onClick={() => setIsContentOnly(!isContentOnly)}
+            className={`flex items-center gap-2 px-4 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] rounded-xl border transition-all ${
+              isContentOnly ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/70'
+            }`}
+            title={isContentOnly ? 'Show Full Source' : 'Focus Mode (Hide Design Styles)'}>
+            <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='3' d='M4 6h16M4 12h16m-7 6h7' />
+            </svg>
+            <span>{isContentOnly ? 'Styles Collapsed' : 'Focus Mode'}</span>
+          </button>
         </div>
 
         <div className='flex items-center gap-6'>
@@ -163,11 +227,27 @@ export function Workspace() {
           <button
             onClick={handleManualSave}
             disabled={saveStatus === 'saving'}
-            className='flex items-center gap-2 px-6 py-2 text-[10px] font-black uppercase tracking-widest text-black bg-white rounded-xl hover:bg-accent transition-all duration-300 active:scale-95 disabled:opacity-50'>
-            <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='3' d='M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4' />
+            className='flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest bg-white/5 text-white/60 rounded-xl hover:bg-white/10 transition-all disabled:opacity-30 border border-white/10'
+            title='Sync to Local Storage'>
+            <svg className={`w-3.5 h-3.5 ${saveStatus === 'saving' ? 'animate-spin' : ''}`} fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth='3'
+                d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'></path>
             </svg>
-            Save & Build
+            <span>Sync</span>
+          </button>
+
+          <button
+            onClick={handleExport}
+            disabled={isDownloading || isLoading}
+            className='flex items-center gap-2 px-5 py-2 text-[10px] font-black uppercase tracking-widest bg-white text-black rounded-xl hover:bg-accent transition-all disabled:opacity-30'
+            title='Export as PDF'>
+            <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='3' d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4'></path>
+            </svg>
+            <span>Export</span>
           </button>
         </div>
       </div>
@@ -181,7 +261,30 @@ export function Workspace() {
             <span className='text-[9px] font-black uppercase tracking-[0.4em] text-white/20'>Source Editor</span>
           </div>
           <div className='flex-1 overflow-hidden'>
-            <LatexEditor value={currentCode} onChange={setCode} />
+            <LatexEditor
+              value={(() => {
+                const raw = activeTab === 'resume' ? resumeCode : clCode;
+                if (!isContentOnly) return raw;
+                const match = raw.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
+                return match ? match[1].trim() : raw;
+              })()}
+              onChange={(newVal) => {
+                const currentRaw = activeTab === 'resume' ? resumeCode : clCode;
+                const setter = activeTab === 'resume' ? setResumeCode : setClCode;
+
+                if (!isContentOnly) {
+                  setter(newVal);
+                  return;
+                }
+
+                const match = currentRaw.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
+                if (match) {
+                  setter(`${match[1]}\n${newVal}\n${match[2]}`);
+                } else {
+                  setter(newVal);
+                }
+              }}
+            />
           </div>
         </section>
 

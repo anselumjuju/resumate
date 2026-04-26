@@ -1,6 +1,6 @@
 "use server";
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { GeminiModel } from "@/types/ai";
 
 interface OptimizationResult {
@@ -35,11 +35,7 @@ export async function optimizeResumeAction(
       if (clMatch) clBody = clMatch[1].trim();
     }
 
-    // 2. Initialize Gemini
-    const genAI = new GoogleGenerativeAI(config.key);
-    const model = genAI.getGenerativeModel({ model: config.model });
-
-    // 3. Construct Prompt
+    // 2. Construct Prompt
     const prompt = `
 You are an expert career coach and LaTeX specialist.
 I will provide you with a LaTeX resume body, a Job Description, and optionally a Cover Letter template.
@@ -56,9 +52,9 @@ RULES FOR RESUME OPTIMIZATION:
 - Return ONLY the updated LaTeX body content. Do NOT include the preamble or the \\begin/\\end document tags.
 
 RULES FOR COVER LETTER:
-${coverLetterTemplate ? 
-  '- I have provided a Cover Letter template body. REWRITE the content inside while preserving the overall LaTeX structure, contact information, and styling.' : 
-  '- Draft a concise, high-impact cover letter tailored to the job description and the candidate\'s profile. Return as plain text content (I will wrap it in LaTeX later).'}
+${coverLetterTemplate ?
+        '- I have provided a Cover Letter template body. REWRITE the content inside while preserving the overall LaTeX structure, contact information, and styling.' :
+        '- Draft a concise, high-impact cover letter tailored to the job description and the candidate\'s profile. Return as plain text content (I will wrap it in LaTeX later).'}
 - Focus on how the candidate's skills solve the company's specific problems mentioned in the JD.
 
 INPUTS:
@@ -76,11 +72,21 @@ RESPONSE FORMAT (Strict JSON):
   "coverLetter": "the updated latex cover letter body content (if template provided) OR plain text (if no template)"
 }
 `;
+    // 3. Initialize Gemini
+    const genAI = new GoogleGenAI({ apiKey: config.key });
+    const result = await genAI.models.generateContent({
+      model: config.model,
+      contents: prompt
+    });
 
-    // 4. Call Gemini
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    
+    console.log(result);
+
+    const responseText = result.text;
+
+    if (!responseText) {
+      throw new Error("No response from AI.");
+    }
+
     // Clean JSON response (Gemini sometimes adds markdown blocks)
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

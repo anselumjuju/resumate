@@ -2,13 +2,14 @@
 
 import {createContext, useContext, useState, useEffect, useCallback, ReactNode} from 'react';
 import {GeminiState, GeminiKeyConfig, GeminiModel} from '@/types/ai';
+import {GEMINI_MODELS, DEFAULT_MODEL} from '@/constants/models';
 
 const STORAGE_KEY = 'gemini_config';
 
 const DEFAULT_STATE: GeminiState = {
   keys: [],
   activeKeyId: null,
-  selectedModel: 'gemini-2.5-flash',
+  selectedModel: DEFAULT_MODEL,
   autoSwitch: false,
   lastResetAt: Date.now(),
 };
@@ -21,6 +22,8 @@ interface GeminiConfigContextType extends GeminiState {
   setModel: (model: GeminiModel) => void;
   setAutoSwitch: (enabled: boolean) => void;
   incrementUsage: (keyId: string, model: GeminiModel) => void;
+  isDirty: boolean;
+  setIsDirty: (dirty: boolean) => void;
 }
 
 const GeminiConfigContext = createContext<GeminiConfigContextType | undefined>(undefined);
@@ -55,23 +58,25 @@ export function GeminiConfigProvider({children}: {children: ReactNode}) {
     const checkReset = () => {
       const now = new Date();
       const lastReset = state.lastResetAt ? new Date(state.lastResetAt) : new Date(0);
-      
+
       const resetTimeToday = new Date(now);
       resetTimeToday.setUTCHours(7, 30, 0, 0);
 
       // If we are past today's 1 PM IST and last reset was before today's 1 PM IST
       if (now.getTime() >= resetTimeToday.getTime() && lastReset.getTime() < resetTimeToday.getTime()) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           lastResetAt: Date.now(),
-          keys: prev.keys.map(k => ({
+          keys: prev.keys.map((k) => ({
             ...k,
-            usageByModel: {
-              'gemini-2.5-flash': 0,
-              'gemini-2.5-pro': 0,
-              'gemini-2.5-flash-lite': 0,
-            }
-          }))
+            usageByModel: GEMINI_MODELS.reduce(
+              (acc, m) => ({
+                ...acc,
+                [m.id]: 0,
+              }),
+              {} as Record<GeminiModel, number>,
+            ),
+          })),
         }));
       }
     };
@@ -86,11 +91,13 @@ export function GeminiConfigProvider({children}: {children: ReactNode}) {
       const newKey: GeminiKeyConfig = {
         id: crypto.randomUUID(),
         key,
-        usageByModel: {
-          'gemini-2.5-flash': 0,
-          'gemini-2.5-pro': 0,
-          'gemini-2.5-flash-lite': 0,
-        },
+        usageByModel: GEMINI_MODELS.reduce(
+          (acc, m) => ({
+            ...acc,
+            [m.id]: 0,
+          }),
+          {} as Record<GeminiModel, number>,
+        ),
         label: label || `Key ${prev.keys.length + 1}`,
       };
       return {
@@ -138,17 +145,17 @@ export function GeminiConfigProvider({children}: {children: ReactNode}) {
         : k,
       );
 
-      const activeKey = updatedKeys.find(k => k.id === keyId);
+      const activeKey = updatedKeys.find((k) => k.id === keyId);
       let nextModel = prev.selectedModel;
 
       // Auto-switch logic
       if (prev.autoSwitch && activeKey && activeKey.usageByModel[model] >= 20) {
-        const models: GeminiModel[] = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite'];
-        const currentIndex = models.indexOf(model);
-        
+        const modelList = GEMINI_MODELS.map((m) => m.id);
+        const currentIndex = modelList.indexOf(model);
+
         // Find next available model that hasn't hit the limit
-        for (let i = 1; i < models.length; i++) {
-          const m = models[(currentIndex + i) % models.length];
+        for (let i = 1; i < modelList.length; i++) {
+          const m = modelList[(currentIndex + i) % modelList.length];
           if (activeKey.usageByModel[m] < 20) {
             nextModel = m;
             break;
@@ -159,13 +166,17 @@ export function GeminiConfigProvider({children}: {children: ReactNode}) {
       return {
         ...prev,
         keys: updatedKeys,
-        selectedModel: nextModel
+        selectedModel: nextModel,
       };
     });
   }, []);
 
+  const [isDirty, setIsDirty] = useState(false);
+
   return (
-    <GeminiConfigContext.Provider value={{...state, isLoaded, addKey, removeKey, setActiveKey, setModel, setAutoSwitch, incrementUsage}}>{children}</GeminiConfigContext.Provider>
+    <GeminiConfigContext.Provider value={{...state, isLoaded, addKey, removeKey, setActiveKey, setModel, setAutoSwitch, incrementUsage, isDirty, setIsDirty}}>
+      {children}
+    </GeminiConfigContext.Provider>
   );
 }
 

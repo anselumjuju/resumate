@@ -1,4 +1,10 @@
+import { Metadata } from "next";
 import { Workspace } from "@/components/workspace";
+
+export const metadata: Metadata = {
+  title: "Master Template | Resumate",
+  description: "Edit and manage your master LaTeX resume template.",
+};
 
 export default function EditorPage() {
   return (

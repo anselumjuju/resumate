@@ -8,7 +8,6 @@ import {useGeminiConfig} from '@/hooks/use-gemini-config';
 import {optimizeResumeAction} from '@/actions/optimize-resume';
 import {DiffPreview} from '@/components/editor/diff-preview';
 import {selectGeminiConfig} from '@/lib/ai-selector';
-import {GeminiState} from '@/types/ai';
 import {LatexEditor} from '@/components/editor/latex-editor';
 
 const stopWords = new Set([
@@ -124,8 +123,7 @@ const extractMissingKeywords = (jd: string, resume: string) => {
 };
 
 export function TransformWorkspace() {
-  const geminiConfig = useGeminiConfig();
-  const {activeKeyId, incrementUsage} = geminiConfig;
+  const {incrementUsage, setIsDirty, keys, activeKeyId, selectedModel, autoSwitch} = useGeminiConfig();
 
   const [companyName, setCompanyName] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -151,12 +149,14 @@ export function TransformWorkspace() {
   const [optimizationResult, setOptimizationResult] = useState<{optimizedBody: string; coverLetter: string} | null>(null);
   const [showDiff, setShowDiff] = useState(false);
   const [previousDraftResume, setPreviousDraftResume] = useState('');
+  const [previousDraftCoverLetter, setPreviousDraftCoverLetter] = useState('');
 
   // Resizable Panels State
   const [leftWidth, setLeftWidth] = useState(420);
   const [rightWidth, setRightWidth] = useState(320);
   const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
   const [isRightCollapsed, setIsRightCollapsed] = useState(false);
+  const [isContentOnly, setIsContentOnly] = useState(true);
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
 
@@ -197,30 +197,46 @@ export function TransformWorkspace() {
     const savedBaseResume = localStorage.getItem('base_resume') || '';
     const savedBaseCL = localStorage.getItem('base_cover_letter') || '';
 
-    // Check for existing drafts first
-    const savedDraftResume = localStorage.getItem('job_draft_resume');
-    const savedDraftCL = localStorage.getItem('job_draft_cover_letter');
-
     if (savedCompany) setCompanyName(savedCompany);
     if (savedJD) setJobDescription(savedJD);
     setBaseResume(savedBaseResume);
     setBaseCoverLetter(savedBaseCL);
 
-    // Prioritize existing drafts, otherwise fall back to base
-    setDraftResume(savedDraftResume || savedBaseResume);
-    setDraftCoverLetter(savedDraftCL || savedBaseCL);
+    // Always start fresh from base templates
+    setDraftResume(savedBaseResume);
+    setDraftCoverLetter(savedBaseCL);
 
     setIsHydrated(true);
   }, []);
 
-  // Save to localStorage when values change
+  // Save metadata to localStorage when values change
   useEffect(() => {
     if (!isHydrated) return;
     localStorage.setItem('target_company', companyName);
     localStorage.setItem('target_jd', jobDescription);
-    localStorage.setItem('job_draft_resume', draftResume);
-    localStorage.setItem('job_draft_cover_letter', draftCoverLetter);
-  }, [companyName, jobDescription, draftResume, draftCoverLetter, isHydrated]);
+  }, [companyName, jobDescription, isHydrated]);
+
+  // Prevent accidental navigation when changes are present
+  useEffect(() => {
+    const isResumeModified = draftResume !== baseResume;
+    const isCLModified = draftCoverLetter !== baseCoverLetter;
+    const dirty = isResumeModified || isCLModified;
+
+    setIsDirty(dirty);
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (dirty) {
+        e.preventDefault();
+        e.returnValue = ''; // Required for most browsers
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      setIsDirty(false); // Clean up dirty state on unmount
+    };
+  }, [draftResume, baseResume, draftCoverLetter, baseCoverLetter, setIsDirty]);
 
   // Compile draft for preview
   useEffect(() => {
@@ -264,39 +280,44 @@ export function TransformWorkspace() {
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const filePrefix =
+      const sanitizedCompany =
         companyName.trim() ?
           companyName
             .trim()
-            .replace(/[^a-z0-9]/gi, '_')
+            .replace(/[^a-z0-9]/gi, '-')
             .toLowerCase()
         : 'optimized';
+
+      const filePrefix = `anselumjuju-${sanitizedCompany}`;
 
       if (activeTab === 'resume') {
         // Fallback compile if preview isn't ready
         let pdfData = resumePdfBase64;
         if (!pdfData) {
           const result = await compilePdf(draftResume);
-          if (result.success && result.pdfBase64) pdfData = result.pdfBase64;
-          else throw new Error(result.error || 'Failed to compile resume PDF');
+          if (result.success && result.pdfBase64) {
+            pdfData = result.pdfBase64;
+          } else {
+            throw new Error(result.error || 'Compilation failed');
+          }
         }
 
-        const link = document.createElement('a');
-        link.href = `data:application/pdf;base64,${pdfData}`;
-        link.download = `${filePrefix}_resume.pdf`;
-        link.click();
+        if (pdfData) {
+          const link = document.createElement('a');
+          link.href = `data:application/pdf;base64,${pdfData}`;
+          link.download = `${filePrefix}-resume.pdf`;
+          link.click();
+        }
       } else {
-        // Cover Letter Download
-        let pdfData = resumePdfBase64; // reused for CL when tab is active
-        if (!pdfData) {
-          const result = await compilePdf(draftCoverLetter);
-          if (result.success && result.pdfBase64) pdfData = result.pdfBase64;
-          else throw new Error(result.error || 'Failed to compile cover letter PDF');
+        // Handle cover letter export
+        const result = await compilePdf(draftCoverLetter);
+        if (!result.success || !result.pdfBase64) {
+          throw new Error(result.error || 'Cover letter compilation failed');
         }
 
         const link = document.createElement('a');
-        link.href = `data:application/pdf;base64,${pdfData}`;
-        link.download = `${filePrefix}_cover_letter.pdf`;
+        link.href = `data:application/pdf;base64,${result.pdfBase64}`;
+        link.download = `${filePrefix}-cover-letter.pdf`;
         link.click();
       }
     } catch (err: any) {
@@ -312,25 +333,33 @@ export function TransformWorkspace() {
     setIsOptimizing(true);
     try {
       // 1. Select key/model
-      const selection = selectGeminiConfig(geminiConfig as GeminiState);
+      const selection = selectGeminiConfig({keys, activeKeyId, selectedModel, autoSwitch});
       if (!selection.success) {
         alert(selection.error);
         return;
       }
 
       // 2. Call AI - Use draftResume so manual edits are preserved
-      const result = await optimizeResumeAction(draftResume, jobDescription, selection.config, baseCoverLetter);
+      // ALSO use draftCoverLetter so manual edits to CL are preserved
+      const result = await optimizeResumeAction(draftResume, jobDescription, selection.config, draftCoverLetter);
 
       if (result.success && result.optimizedBody && result.coverLetter) {
-        // Save current draft for potential revert
+        // Save current drafts for potential revert
         setPreviousDraftResume(draftResume);
+        setPreviousDraftCoverLetter(draftCoverLetter);
 
+        // Update resume draft immediately (in-document) to trigger preview
         const documentMatch = draftResume.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
         const [preamble, post] = [documentMatch?.[1] || '', documentMatch?.[2] || ''];
-        const newLatex = `${preamble}\n${result.optimizedBody}\n${post}`;
+        setDraftResume(`${preamble}\n${result.optimizedBody}\n${post}`);
 
-        // Update draft immediately to trigger PDF recompile in background
-        setDraftResume(newLatex);
+        // Update cover letter draft immediately
+        const clMatch = draftCoverLetter.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
+        if (clMatch) {
+          setDraftCoverLetter(`${clMatch[1]}\n${result.coverLetter}\n${clMatch[2]}`);
+        } else {
+          setDraftCoverLetter(result.coverLetter);
+        }
 
         setOptimizationResult({
           optimizedBody: result.optimizedBody,
@@ -353,43 +382,36 @@ export function TransformWorkspace() {
   const handleAccept = (finalBody: string) => {
     if (!optimizationResult) return;
 
-    // Use the final merged body from DiffPreview
-    const documentMatch = draftResume.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
-    const [preamble, post] = [documentMatch?.[1] || '', documentMatch?.[2] || ''];
-    const newLatex = `${preamble}\n${finalBody}\n${post}`;
-
-    setDraftResume(newLatex);
-
-    // If cover letter was also generated, handle it
-    if (optimizationResult.coverLetter) {
-      if (baseCoverLetter) {
-        // Extract preamble/post from base CL
-        const clPreambleMatch = baseCoverLetter.match(/([\s\S]*?)\\begin\{document\}/);
-        const clPreamble = clPreambleMatch ? clPreambleMatch[1] : '';
-        const clPostMatch = baseCoverLetter.match(/\\end\{document\}([\s\S]*)$/);
-        const clPost = clPostMatch ? clPostMatch[1] : '';
-
-        const newCL = `${clPreamble}\\begin{document}\n${optimizationResult.coverLetter}\n\\end{document}${clPost}`;
-        setDraftCoverLetter(newCL);
+    // The 'finalBody' is the resolved content from the DiffPreview
+    if (activeTab === 'resume') {
+      const documentMatch = draftResume.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
+      const [preamble, post] = [documentMatch?.[1] || '', documentMatch?.[2] || ''];
+      setDraftResume(`${preamble}\n${finalBody}\n${post}`);
+    } else {
+      const clMatch = draftCoverLetter.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
+      if (clMatch) {
+        setDraftCoverLetter(`${clMatch[1]}\n${finalBody}\n${clMatch[2]}`);
       } else {
-        setDraftCoverLetter(optimizationResult.coverLetter);
+        setDraftCoverLetter(finalBody);
       }
     }
 
     setShowDiff(false);
     setOptimizationResult(null);
     setPreviousDraftResume('');
+    setPreviousDraftCoverLetter('');
     alert('AI suggestions applied! (Master template remains untouched)');
   };
 
   const handleReject = () => {
-    // Revert to previous draft
-    if (previousDraftResume) {
-      setDraftResume(previousDraftResume);
-    }
+    // Revert both to previous drafts
+    if (previousDraftResume) setDraftResume(previousDraftResume);
+    if (previousDraftCoverLetter) setDraftCoverLetter(previousDraftCoverLetter);
+
     setShowDiff(false);
     setOptimizationResult(null);
     setPreviousDraftResume('');
+    setPreviousDraftCoverLetter('');
   };
 
   const previewTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -397,12 +419,19 @@ export function TransformWorkspace() {
     if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
 
     previewTimeoutRef.current = setTimeout(() => {
-      // Update draftResume temporarily to trigger re-compile
-      const documentMatch = draftResume.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
-      const [preamble, post] = [documentMatch?.[1] || '', documentMatch?.[2] || ''];
-      const newLatex = `${preamble}\n${mergedBody}\n${post}`;
-      setDraftResume(newLatex);
-    }, 500);
+      if (activeTab === 'resume') {
+        const documentMatch = draftResume.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
+        const [preamble, post] = [documentMatch?.[1] || '', documentMatch?.[2] || ''];
+        setDraftResume(`${preamble}\n${mergedBody}\n${post}`);
+      } else {
+        const clMatch = draftCoverLetter.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
+        if (clMatch) {
+          setDraftCoverLetter(`${clMatch[1]}\n${mergedBody}\n${clMatch[2]}`);
+        } else {
+          setDraftCoverLetter(mergedBody);
+        }
+      }
+    }, 400);
   };
 
   const missingKeywords = React.useMemo(() => {
@@ -475,73 +504,73 @@ export function TransformWorkspace() {
 
           {!isLeftCollapsed && (
             <div className='flex-1 overflow-y-auto custom-scrollbar p-6 space-y-10'>
-            {/* Company Name */}
-            <div className='space-y-4'>
-              <label htmlFor='companyName' className='block text-[10px] font-black text-white/20 uppercase tracking-[0.2em]'>
-                Target Company
-              </label>
-              <div className='relative group'>
-                <input
-                  id='companyName'
-                  type='text'
-                  placeholder='Entity name…'
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className='w-full px-4 py-3 bg-white/[0.02] border border-white/5 rounded-xl focus:border-accent/40 focus:bg-white/[0.04] text-base font-semibold tracking-tighter text-white transition-all placeholder:text-white/5 outline-none'
-                />
-                <div className='absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity' />
-              </div>
-            </div>
-
-            {/* Job Description */}
-            <div className='flex flex-col gap-4'>
-              <div className='flex items-center justify-between'>
-                <label htmlFor='jobDescription' className='block text-[10px] font-black text-white/20 uppercase tracking-[0.2em]'>
-                  System Constraints
+              {/* Company Name */}
+              <div className='space-y-4'>
+                <label htmlFor='companyName' className='block text-[10px] font-black text-white/20 uppercase tracking-[0.2em]'>
+                  Target Company
                 </label>
-                {jobDescription.length > 0 && (
-                  <span className='text-[10px] font-black text-accent tabular-nums uppercase tracking-widest'>{jobDescription.split(/\s+/).filter(Boolean).length} Tokens</span>
-                )}
+                <div className='relative group'>
+                  <input
+                    id='companyName'
+                    type='text'
+                    placeholder='Entity name…'
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className='w-full px-4 py-3 bg-white/[0.05] border border-white/[0.07] rounded-xl focus:border-accent/40 focus:bg-white/[0.04] text-base font-semibold tracking-tighter text-white transition-all placeholder:text-white/[0.2] outline-none'
+                  />
+                  <div className='absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity' />
+                </div>
               </div>
-              <textarea
-                id='jobDescription'
-                placeholder='Paste raw data here…'
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                className='w-full min-h-[400px] px-6 py-6 bg-white/[0.02] border border-white/5 rounded-xl focus:border-accent/40 focus:bg-white/[0.04] text-sm leading-relaxed text-white/80 resize-none transition-all placeholder:text-white/10 outline-none'
-              />
-            </div>
 
-            {/* Keyword Analysis */}
-            {missingKeywords.length > 0 && (
-              <div className='p-6 rounded-xl bg-accent/5 border border-accent/10'>
-                <div className='flex items-center gap-3 mb-4'>
-                  <div className='w-1.5 h-1.5 rounded-full bg-accent animate-pulse' />
-                  <p className='text-[10px] font-black text-accent uppercase tracking-widest'>Optimization Gaps</p>
+              {/* Job Description */}
+              <div className='flex flex-col gap-4'>
+                <div className='flex items-center justify-between'>
+                  <label htmlFor='jobDescription' className='block text-[10px] font-black text-white/20 uppercase tracking-[0.2em]'>
+                    System Constraints
+                  </label>
+                  {jobDescription.length > 0 && (
+                    <span className='text-[10px] font-black text-accent tabular-nums uppercase tracking-widest'>{jobDescription.split(/\s+/).filter(Boolean).length} Tokens</span>
+                  )}
                 </div>
-                <div className='flex flex-wrap gap-2'>
-                  {missingKeywords.map((word) => (
-                    <span key={word} className='px-2.5 py-1 bg-white/5 text-white/60 text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/5'>
-                      {word}
-                    </span>
-                  ))}
-                </div>
+                <textarea
+                  id='jobDescription'
+                  placeholder='Paste raw data here…'
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
+                  className='w-full min-h-[400px] px-6 py-6 bg-white/[0.05] border border-white/[0.07] rounded-xl focus:border-accent/40 focus:bg-white/[0.04] text-base font-semibold tracking-tighter text-white transition-all placeholder:text-white/[0.2] outline-none'
+                />
               </div>
-            )}
+
+              {/* Keyword Analysis */}
+              {missingKeywords.length > 0 && (
+                <div className='p-6 rounded-xl bg-accent/5 border border-accent/10'>
+                  <div className='flex items-center gap-3 mb-4'>
+                    <div className='w-1.5 h-1.5 rounded-full bg-accent animate-pulse' />
+                    <p className='text-[10px] font-black text-accent uppercase tracking-widest'>Optimization Gaps</p>
+                  </div>
+                  <div className='flex flex-wrap gap-2'>
+                    {missingKeywords.map((word) => (
+                      <span key={word} className='px-2.5 py-1 bg-white/5 text-white/60 text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/5'>
+                        {word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Left Resizer */}
+        {!isLeftCollapsed && (
+          <div
+            onMouseDown={() => setIsResizingLeft(true)}
+            className={`w-1.5 h-full cursor-col-resize transition-all z-30 shrink-0 -mx-0.5 group/resizer relative ${isResizingLeft ? 'bg-accent/40' : 'hover:bg-white/5'}`}>
+            <div
+              className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] transition-colors ${isResizingLeft ? 'bg-accent' : 'bg-white/10 group-hover/resizer:bg-accent/40'}`}
+            />
           </div>
         )}
-      </section>
-
-      {/* Left Resizer */}
-      {!isLeftCollapsed && (
-        <div
-          onMouseDown={() => setIsResizingLeft(true)}
-          className={`w-1.5 h-full cursor-col-resize transition-all z-30 shrink-0 -mx-0.5 group/resizer relative ${isResizingLeft ? 'bg-accent/40' : 'hover:bg-white/5'}`}>
-          <div
-            className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] transition-colors ${isResizingLeft ? 'bg-accent' : 'bg-white/10 group-hover/resizer:bg-accent/40'}`}
-          />
-        </div>
-      )}
 
         {/* ── Center Panel: Preview/Editor ── */}
         <section className='flex-1 flex flex-col overflow-hidden bg-black relative'>
@@ -601,6 +630,18 @@ export function TransformWorkspace() {
                       d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'></path>
                   </svg>
                 </button>
+
+                {/* Focus Mode Toggle (Only in Editor) */}
+                {viewMode === 'editor' && (
+                  <button
+                    onClick={() => setIsContentOnly(!isContentOnly)}
+                    className={`p-2 rounded-lg transition-all ${isContentOnly ? 'bg-accent/10 text-accent' : 'text-white/20 hover:text-white/60'}`}
+                    title={isContentOnly ? 'Show Full LaTeX' : 'Focus Mode (Hide Styles)'}>
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2.5' d='M4 6h16M4 12h16m-7 6h7' />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -624,8 +665,12 @@ export function TransformWorkspace() {
                 <div className='h-[45%] shrink-0'>
                   <DiffPreview
                     isVisible={showDiff}
-                    original={previousDraftResume.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/)?.[1]?.trim() || ''}
-                    updated={optimizationResult.optimizedBody}
+                    original={
+                      activeTab === 'resume' ?
+                        previousDraftResume.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/)?.[1]?.trim() || ''
+                      : previousDraftCoverLetter.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/)?.[1]?.trim() || previousDraftCoverLetter
+                    }
+                    updated={activeTab === 'resume' ? optimizationResult.optimizedBody : optimizationResult.coverLetter}
                     onAccept={(finalBody) => handleAccept(finalBody)}
                     onReject={handleReject}
                     onPreviewUpdate={handlePreviewUpdate}
@@ -645,7 +690,30 @@ export function TransformWorkspace() {
                 {viewMode === 'preview' ?
                   <PdfPreview isLoading={isCompilingPreview} pdfBase64={resumePdfBase64} hideControls={false} />
                 : <div className='w-full h-full rounded-xl overflow-hidden border border-white/5 bg-black'>
-                    <LatexEditor value={activeTab === 'resume' ? draftResume : draftCoverLetter} onChange={activeTab === 'resume' ? setDraftResume : setDraftCoverLetter} />
+                    <LatexEditor
+                      value={(() => {
+                        const raw = activeTab === 'resume' ? draftResume : draftCoverLetter;
+                        if (!isContentOnly) return raw;
+                        const match = raw.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
+                        return match ? match[1].trim() : raw;
+                      })()}
+                      onChange={(newVal) => {
+                        const currentRaw = activeTab === 'resume' ? draftResume : draftCoverLetter;
+                        const setter = activeTab === 'resume' ? setDraftResume : setDraftCoverLetter;
+
+                        if (!isContentOnly) {
+                          setter(newVal);
+                          return;
+                        }
+
+                        const match = currentRaw.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
+                        if (match) {
+                          setter(`${match[1]}\n${newVal}\n${match[2]}`);
+                        } else {
+                          setter(newVal);
+                        }
+                      }}
+                    />
                   </div>
                 }
               </div>

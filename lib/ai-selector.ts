@@ -1,4 +1,5 @@
 import { GeminiState, GeminiModel } from '@/types/ai';
+import { GEMINI_MODELS } from '@/constants/models';
 
 export interface GeminiRequestConfig {
   key: string;
@@ -10,7 +11,7 @@ export type GeminiSelectionResult =
   | { success: true; config: GeminiRequestConfig }
   | { success: false; error: string };
 
-const ALL_MODELS: GeminiModel[] = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite'];
+const ALL_MODELS = GEMINI_MODELS.map(m => m.id);
 
 export function selectGeminiConfig(state: GeminiState): GeminiSelectionResult {
   const { keys, activeKeyId, selectedModel, autoSwitch } = state;

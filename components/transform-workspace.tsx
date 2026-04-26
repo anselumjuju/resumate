@@ -151,7 +151,6 @@ export function TransformWorkspace() {
   const [optimizationResult, setOptimizationResult] = useState<{optimizedBody: string; coverLetter: string} | null>(null);
   const [showDiff, setShowDiff] = useState(false);
   const [previousDraftResume, setPreviousDraftResume] = useState('');
-  const [generatedCoverLetter, setGeneratedCoverLetter] = useState('');
 
   // Resizable Panels State
   const [leftWidth, setLeftWidth] = useState(420);

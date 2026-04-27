@@ -23,12 +23,6 @@ export const GEMINI_MODELS: ModelDefinition[] = [
     name: 'Gemini 2.5 Flash',
     description: 'Fast and efficient for high-volume optimizations.',
     limit: 20
-  },
-  {
-    id: 'gemini-2.5-flash-lite',
-    name: 'Gemini 2.5 Flash Lite',
-    description: 'Lightweight and agile for rapid iterations.',
-    limit: 20
   }
 ];
 

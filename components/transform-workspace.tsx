@@ -9,6 +9,7 @@ import {optimizeResumeAction} from '@/actions/optimize-resume';
 import {DiffPreview} from '@/components/editor/diff-preview';
 import {selectGeminiConfig} from '@/lib/ai-selector';
 import {LatexEditor} from '@/components/editor/latex-editor';
+import {DEFAULT_COVER_LETTER, DEFAULT_RESUME} from '@/constants/templates';
 
 const stopWords = new Set([
   'and',
@@ -141,7 +142,9 @@ export function TransformWorkspace() {
   const [isHydrated, setIsHydrated] = useState(false);
 
   const [resumePdfBase64, setResumePdfBase64] = useState<string | null>(null);
+  const [letterPdfBase64, setLetterPdfBase64] = useState<string | null>(null);
   const [isCompilingPreview, setIsCompilingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
   // AI States
@@ -194,8 +197,8 @@ export function TransformWorkspace() {
   useEffect(() => {
     const savedCompany = localStorage.getItem('target_company');
     const savedJD = localStorage.getItem('target_jd');
-    const savedBaseResume = localStorage.getItem('base_resume') || '';
-    const savedBaseCL = localStorage.getItem('base_cover_letter') || '';
+    const savedBaseResume = localStorage.getItem('base_resume') || DEFAULT_RESUME;
+    const savedBaseCL = localStorage.getItem('base_cover_letter') || DEFAULT_COVER_LETTER;
 
     if (savedCompany) setCompanyName(savedCompany);
     if (savedJD) setJobDescription(savedJD);
@@ -246,17 +249,28 @@ export function TransformWorkspace() {
     let isMounted = true;
     const loadPreview = async () => {
       setIsCompilingPreview(true);
+      setPreviewError(null);
+
       const result = await compilePdf(currentDraft);
-      if (isMounted && result.success && result.pdfBase64) {
-        setResumePdfBase64(result.pdfBase64);
+      if (isMounted) {
+        if (result.success && result.pdfBase64) {
+          if (activeTab === 'resume') {
+            setResumePdfBase64(result.pdfBase64);
+          } else {
+            setLetterPdfBase64(result.pdfBase64);
+          }
+        } else {
+          setPreviewError(result.error || 'LaTeX Compilation Failed');
+        }
+        setIsCompilingPreview(false);
       }
-      if (isMounted) setIsCompilingPreview(false);
     };
 
-    loadPreview();
+    const timer = setTimeout(loadPreview, 500); // Add a small debounce
 
     return () => {
       isMounted = false;
+      clearTimeout(timer);
     };
   }, [isHydrated, draftResume, draftCoverLetter, activeTab]);
 
@@ -367,9 +381,11 @@ export function TransformWorkspace() {
         });
         setShowDiff(true);
 
-        // 3. Increment usage
+        // 3. Increment usage (even if success, we used tokens)
         incrementUsage(selection.config.keyId, selection.config.model);
       } else {
+        // Still increment usage for the key if we hit an error (tokens were likely consumed)
+        incrementUsage(selection.config.keyId, selection.config.model);
         alert(result.error || 'Optimization failed');
       }
     } catch (err: any) {
@@ -420,18 +436,18 @@ export function TransformWorkspace() {
 
     previewTimeoutRef.current = setTimeout(() => {
       if (activeTab === 'resume') {
-        const documentMatch = draftResume.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
+        const documentMatch = previousDraftResume.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
         const [preamble, post] = [documentMatch?.[1] || '', documentMatch?.[2] || ''];
         setDraftResume(`${preamble}\n${mergedBody}\n${post}`);
       } else {
-        const clMatch = draftCoverLetter.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
-        if (clMatch) {
-          setDraftCoverLetter(`${clMatch[1]}\n${mergedBody}\n${clMatch[2]}`);
+        const documentMatch = previousDraftCoverLetter.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
+        if (documentMatch) {
+          setDraftCoverLetter(`${documentMatch[1]}\n${mergedBody}\n${documentMatch[2]}`);
         } else {
           setDraftCoverLetter(mergedBody);
         }
       }
-    }, 400);
+    }, 300);
   };
 
   const missingKeywords = React.useMemo(() => {
@@ -662,7 +678,7 @@ export function TransformWorkspace() {
             {optimizationResult && showDiff ?
               <div className='flex-1 flex flex-col overflow-hidden p-5 gap-5'>
                 {/* Top: Diff Review (Flexible height) */}
-                <div className='h-[45%] shrink-0'>
+                <div className='h-[40%] shrink-0'>
                   <DiffPreview
                     isVisible={showDiff}
                     original={
@@ -679,16 +695,15 @@ export function TransformWorkspace() {
 
                 {/* Bottom: Live PDF Preview */}
                 <div className='flex-1 border-t border-white/20 pt-5'>
-                  <div className='flex items-center justify-between mb-2'>
-                    <span className='text-[10px] font-bold text-neutral-400 uppercase tracking-widest'>Live Preview</span>
-                    <span className='text-[10px] text-neutral-500 italic'>Updates after you Apply changes</span>
+                  {/* Bottom: Resulting Preview */}
+                  <div className='flex-1 h-full rounded-xl overflow-hidden border border-white/5 bg-black'>
+                    <PdfPreview isLoading={isCompilingPreview} pdfBase64={activeTab === 'resume' ? resumePdfBase64 : letterPdfBase64} error={previewError} hideControls={true} />
                   </div>
-                  <PdfPreview isLoading={isCompilingPreview} pdfBase64={resumePdfBase64} hideControls={true} />
                 </div>
               </div>
             : <div className='flex-1 p-5 overflow-auto relative'>
                 {viewMode === 'preview' ?
-                  <PdfPreview isLoading={isCompilingPreview} pdfBase64={resumePdfBase64} hideControls={false} />
+                  <PdfPreview isLoading={isCompilingPreview} pdfBase64={activeTab === 'resume' ? resumePdfBase64 : letterPdfBase64} error={previewError} hideControls={false} />
                 : <div className='w-full h-full rounded-xl overflow-hidden border border-white/5 bg-black'>
                     <LatexEditor
                       value={(() => {

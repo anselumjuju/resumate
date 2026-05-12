@@ -83,7 +83,7 @@ export function Workspace() {
   const handleExport = async () => {
     setIsDownloading(true);
     try {
-      const filename = `anselumjuju-master-${activeTab.replace('_', '-')}.pdf`;
+      const filename = `resume-master-${activeTab.replace('_', '-')}.pdf`;
 
       // If we already have a valid PDF base64, use it
       let data = pdfBase64;

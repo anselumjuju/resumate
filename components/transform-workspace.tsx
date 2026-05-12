@@ -302,7 +302,7 @@ export function TransformWorkspace() {
             .toLowerCase()
         : 'optimized';
 
-      const filePrefix = `anselumjuju-${sanitizedCompany}`;
+      const filePrefix = `resume-${sanitizedCompany}`;
 
       if (activeTab === 'resume') {
         // Fallback compile if preview isn't ready

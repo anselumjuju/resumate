@@ -61,6 +61,28 @@ Add your Gemini API key in the settings panel to enable AI transformations.
 
 The API key is stored locally in the browser and is never sent to any external backend server.
 
+## How to Get a Gemini API Key
+
+1. Go to Google AI Studio:
+
+   https://aistudio.google.com/
+
+2. Sign in with your Google account.
+
+3. Click on: `Get API Key`
+
+4. Create a new API key or use an existing Google Cloud project.
+
+5. Copy the generated API key.
+
+6. Open Resumate and paste the API key into the settings panel.
+
+## Notes
+
+- The API key is stored locally in your browser using localStorage.
+- Resumate does not use a backend server to store or proxy API requests.
+- You can revoke or regenerate your API key anytime from Google AI Studio.
+
 ## Workflow
 
 1. Create or edit your LaTeX resume template

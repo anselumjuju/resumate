@@ -2,11 +2,13 @@
 
 /* ─── Base tokens ─────────────────────────────────────────── */
 :root {
-  --bg-light: #ffffff;
-  --bg-dark:  #000000;
-  --accent: #88FF00; /* Refined lime */
-  --secondary: #00E0FF; /* Electric cyan */
-  --border-muted: rgba(255, 255, 255, 0.1);
+  --bg-dark: #09090b;
+  --bg-card: #121215;
+  --bg-card-hover: #18181d;
+  --accent: #88ff00;
+  --accent-muted: rgba(136, 255, 0, 0.12);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
 }
 
 @layer utilities {
@@ -14,15 +16,8 @@
     background-color: var(--bg-dark);
     background-attachment: fixed;
     background-image: 
-      radial-gradient(at 0% 0%, hsla(82, 100%, 50%, 0.15) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(188, 100%, 50%, 0.1) 0px, transparent 50%);
-  }
-
-  .bg-grid {
-    background-size: 40px 40px;
-    background-image: 
-      linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      radial-gradient(at 0% 0%, hsla(82, 100%, 50%, 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(188, 100%, 50%, 0.04) 0px, transparent 50%);
   }
 
   .text-accent { color: var(--accent); }
@@ -30,61 +25,40 @@
   .border-accent { border-color: var(--accent); }
 }
 
-/* ─── Smooth scrolling everywhere ────────────────────────── */
+/* ─── Smooth scrolling & body defaults ────────────────────── */
 html {
   scroll-behavior: smooth;
 }
 
-/* ─── Body base ────────────────────────────────────────────── */
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  background-color: var(--bg-dark);
+  color: #f4f4f5;
 }
 
-/* ─── Consistent focus outline reset ─────────────────────── */
-*:focus {
-  outline: none;
-}
-
-/* ─── Scrollbar — minimal and unobtrusive ─────────────────── */
+/* ─── Scrollbar ───────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(120, 120, 120, 0.25);
-  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(120, 120, 120, 0.45);
+  background: rgba(255, 255, 255, 0.3);
 }
 
-/* ─── Typography base ─────────────────────────────────────── */
+/* ─── Typography & Form Resets ────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
-p, li {
-  line-height: 1.65;
-}
-
-/* ─── Textarea ────────────────────────────────────────────── */
-textarea {
-  field-sizing: content;
-}
-
-/* ─── Transitions ─────────────────────────────────────────── */
-a, button {
-  transition-property: color, background-color, border-color, opacity, transform, box-shadow;
-  transition-duration: 150ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-@keyframes scan {
-  from { top: -10%; }
-  to { top: 110%; }
+button, input, textarea, select {
+  font-family: inherit;
 }

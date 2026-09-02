@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   authors: [{ name: "Resumate Team" }],
   openGraph: {
     title: "Resumate | AI-Powered LaTeX Resume Optimizer",
-    description: "The future of resumes. High-precision LaTeX transformer designed for the modern career.",
+    description: "The future of resumes. High-precision LaTeX resume tailoring designed for the modern career.",
     url: "https://resumate.ai",
     siteName: "Resumate",
     locale: "en_US",
@@ -32,8 +32,9 @@ export const metadata: Metadata = {
   },
 };
 
-import { Header } from "@/components/layout/header";
+import { AppShell } from "@/components/layout/app-shell";
 import { GeminiConfigProvider } from "@/hooks/use-gemini-config";
+import { CandidateProfileProvider } from "@/hooks/use-candidate-profile";
 
 export default function RootLayout({
   children,
@@ -43,14 +44,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="h-full w-full flex flex-col overflow-hidden bg-[#f8f8f8] dark:bg-[#0d0d0d] text-neutral-900 dark:text-neutral-100 selection:bg-indigo-500/20">
+      <body className="h-full w-full overflow-hidden bg-[#09090b] text-neutral-100">
         <GeminiConfigProvider>
-          <Header />
-          <div className="flex-1 overflow-auto flex flex-col relative">
-            {children}
-          </div>
+          <CandidateProfileProvider>
+            <AppShell>{children}</AppShell>
+          </CandidateProfileProvider>
         </GeminiConfigProvider>
       </body>
     </html>

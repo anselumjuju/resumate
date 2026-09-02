@@ -5,8 +5,10 @@ export type GeminiModel = (typeof GEMINI_MODELS)[number]['id'];
 export interface GeminiKeyConfig {
   id: string;
   key: string;
-  usageByModel: Record<GeminiModel, number>;
   label?: string;
+  createdAt: number;
+  expiresAt: number;
+  usageByModel: Record<GeminiModel, number>;
 }
 
 export interface GeminiState {

@@ -1,16 +1,18 @@
 'use client';
 
-import {createContext, useContext, useState, useEffect, useCallback, ReactNode} from 'react';
-import {GeminiState, GeminiKeyConfig, GeminiModel} from '@/types/ai';
-import {GEMINI_MODELS, DEFAULT_MODEL} from '@/constants/models';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { GeminiState, GeminiKeyConfig, GeminiModel } from '@/types/ai';
+import { GEMINI_MODELS, DEFAULT_MODEL } from '@/constants/models';
+import { clearAllResumateStorage } from '@/lib/storage';
 
-const STORAGE_KEY = 'gemini_config';
+const LOCAL_STORAGE_KEY = 'gemini_config';
+export const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 const DEFAULT_STATE: GeminiState = {
   keys: [],
   activeKeyId: null,
   selectedModel: DEFAULT_MODEL,
-  autoSwitch: false,
+  autoSwitch: true,
   lastResetAt: Date.now(),
 };
 
@@ -22,48 +24,142 @@ interface GeminiConfigContextType extends GeminiState {
   setModel: (model: GeminiModel) => void;
   setAutoSwitch: (enabled: boolean) => void;
   incrementUsage: (keyId: string, model: GeminiModel) => void;
+  clearAllData: () => void;
   isDirty: boolean;
   setIsDirty: (dirty: boolean) => void;
 }
 
 const GeminiConfigContext = createContext<GeminiConfigContextType | undefined>(undefined);
 
-export function GeminiConfigProvider({children}: {children: ReactNode}) {
+function normalizeKey(k: any): GeminiKeyConfig {
+  const createdAt = typeof k.createdAt === 'number' ? k.createdAt : Date.now();
+  const expiresAt = typeof k.expiresAt === 'number' ? k.expiresAt : createdAt + THIRTY_DAYS_MS;
+
+  return {
+    id: k.id || crypto.randomUUID(),
+    key: k.key || '',
+    label: k.label || 'API Key',
+    createdAt,
+    expiresAt,
+    usageByModel:
+      k.usageByModel ||
+      GEMINI_MODELS.reduce(
+        (acc, m) => ({
+          ...acc,
+          [m.id]: 0,
+        }),
+        {} as Record<GeminiModel, number>,
+      ),
+  };
+}
+
+function isKeyExpired(key: GeminiKeyConfig): boolean {
+  return typeof key.expiresAt === 'number' && Date.now() > key.expiresAt;
+}
+
+export function GeminiConfigProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<GeminiState>(DEFAULT_STATE);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
+  // Initial Hydration from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setState(parsed);
-      } catch (e) {
-        console.error('Failed to parse gemini config', e);
+    let savedKeys: GeminiKeyConfig[] = [];
+    let savedSettings: Partial<GeminiState> = {};
+
+    try {
+      const savedLocal = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedLocal) {
+        const parsed = JSON.parse(savedLocal);
+        if (Array.isArray(parsed.keys)) {
+          savedKeys = parsed.keys.map((item: any) => normalizeKey(item)).filter((k: GeminiKeyConfig) => !isKeyExpired(k));
+        }
+        savedSettings = {
+          selectedModel: parsed.selectedModel || DEFAULT_MODEL,
+          autoSwitch: parsed.autoSwitch !== undefined ? Boolean(parsed.autoSwitch) : true,
+          lastResetAt: parsed.lastResetAt || Date.now(),
+          activeKeyId: parsed.activeKeyId || null,
+        };
       }
+    } catch (e) {
+      console.error('Failed to parse gemini config from localStorage', e);
     }
+
+    const initialActiveId =
+      savedSettings.activeKeyId && savedKeys.some((k) => k.id === savedSettings.activeKeyId)
+        ? savedSettings.activeKeyId
+        : savedKeys.length > 0
+        ? savedKeys[0].id
+        : null;
+
+    setState({
+      keys: savedKeys,
+      activeKeyId: initialActiveId,
+      selectedModel: savedSettings.selectedModel || DEFAULT_MODEL,
+      autoSwitch: savedSettings.autoSwitch ?? true,
+      lastResetAt: savedSettings.lastResetAt || Date.now(),
+    });
+
     setIsLoaded(true);
   }, []);
 
+  // Save changes to localStorage
   useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (!isLoaded) return;
+
+    try {
+      const persistentKeys = state.keys.filter((k) => !isKeyExpired(k));
+
+      localStorage.setItem(
+        LOCAL_STORAGE_KEY,
+        JSON.stringify({
+          keys: persistentKeys,
+          selectedModel: state.selectedModel,
+          autoSwitch: state.autoSwitch,
+          lastResetAt: state.lastResetAt,
+          activeKeyId: state.activeKeyId,
+        }),
+      );
+    } catch (e) {
+      console.error('Failed to persist gemini config', e);
     }
   }, [state, isLoaded]);
 
-  // Daily Reset Logic (1 PM IST = 07:30 UTC)
+  // Periodic expiration cleanup (every 30s)
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const interval = setInterval(() => {
+      setState((prev) => {
+        const nonExpired = prev.keys.filter((k) => !isKeyExpired(k));
+        if (nonExpired.length === prev.keys.length) return prev;
+
+        const stillHasActive = nonExpired.some((k) => k.id === prev.activeKeyId);
+        return {
+          ...prev,
+          keys: nonExpired,
+          activeKeyId: stillHasActive ? prev.activeKeyId : nonExpired.length > 0 ? nonExpired[0].id : null,
+        };
+      });
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isLoaded]);
+
+  // Quota reset check (midnight UTC)
   useEffect(() => {
     if (!isLoaded) return;
 
     const checkReset = () => {
       const now = new Date();
-      const lastReset = state.lastResetAt ? new Date(state.lastResetAt) : new Date(0);
+      const lastReset = new Date(state.lastResetAt || Date.now());
 
-      const resetTimeToday = new Date(now);
-      resetTimeToday.setUTCHours(7, 30, 0, 0);
+      const isDifferentDay =
+        now.getUTCFullYear() !== lastReset.getUTCFullYear() ||
+        now.getUTCMonth() !== lastReset.getUTCMonth() ||
+        now.getUTCDate() !== lastReset.getUTCDate();
 
-      // If we are past today's 1 PM IST and last reset was before today's 1 PM IST
-      if (now.getTime() >= resetTimeToday.getTime() && lastReset.getTime() < resetTimeToday.getTime()) {
+      if (isDifferentDay) {
         setState((prev) => ({
           ...prev,
           lastResetAt: Date.now(),
@@ -82,15 +178,19 @@ export function GeminiConfigProvider({children}: {children: ReactNode}) {
     };
 
     checkReset();
-    const interval = setInterval(checkReset, 60000); // Check every minute
+    const interval = setInterval(checkReset, 60000);
     return () => clearInterval(interval);
   }, [isLoaded, state.lastResetAt]);
 
-  const addKey = useCallback((key: string, label?: string) => {
-    setState((prev) => {
-      const newKey: GeminiKeyConfig = {
+  const addKey = useCallback(
+    (keyStr: string, label?: string) => {
+      const now = Date.now();
+      const newKeyConfig: GeminiKeyConfig = {
         id: crypto.randomUUID(),
-        key,
+        key: keyStr.trim(),
+        label: label?.trim() || `Key ${state.keys.length + 1}`,
+        createdAt: now,
+        expiresAt: now + THIRTY_DAYS_MS,
         usageByModel: GEMINI_MODELS.reduce(
           (acc, m) => ({
             ...acc,
@@ -98,83 +198,86 @@ export function GeminiConfigProvider({children}: {children: ReactNode}) {
           }),
           {} as Record<GeminiModel, number>,
         ),
-        label: label || `Key ${prev.keys.length + 1}`,
       };
-      return {
-        ...prev,
-        keys: [...prev.keys, newKey],
-        activeKeyId: prev.activeKeyId || newKey.id,
-      };
-    });
-  }, []);
+
+      setState((prev) => {
+        const updatedKeys = [...prev.keys, newKeyConfig];
+        return {
+          ...prev,
+          keys: updatedKeys,
+          activeKeyId: prev.activeKeyId || newKeyConfig.id,
+        };
+      });
+    },
+    [state.keys.length],
+  );
 
   const removeKey = useCallback((id: string) => {
     setState((prev) => {
-      const newKeys = prev.keys.filter((k) => k.id !== id);
+      const updatedKeys = prev.keys.filter((k) => k.id !== id);
+      const stillHasActive = updatedKeys.some((k) => k.id === prev.activeKeyId);
       return {
         ...prev,
-        keys: newKeys,
-        activeKeyId: prev.activeKeyId === id ? newKeys[0]?.id || null : prev.activeKeyId,
+        keys: updatedKeys,
+        activeKeyId: stillHasActive ? prev.activeKeyId : updatedKeys.length > 0 ? updatedKeys[0].id : null,
       };
     });
   }, []);
 
   const setActiveKey = useCallback((id: string) => {
-    setState((prev) => ({...prev, activeKeyId: id}));
-  }, []);
-
-  const setModel = useCallback((model: GeminiModel) => {
-    setState((prev) => ({...prev, selectedModel: model}));
-  }, []);
-
-  const setAutoSwitch = useCallback((enabled: boolean) => {
-    setState((prev) => ({...prev, autoSwitch: enabled}));
-  }, []);
-
-  const incrementUsage = useCallback((keyId: string, model: GeminiModel) => {
     setState((prev) => {
-      const updatedKeys = prev.keys.map((k) =>
-        k.id === keyId ?
-          {
-            ...k,
-            usageByModel: {
-              ...k.usageByModel,
-              [model]: (k.usageByModel[model] || 0) + 1,
-            },
-          }
-        : k,
-      );
-
-      const activeKey = updatedKeys.find((k) => k.id === keyId);
-      let nextModel = prev.selectedModel;
-
-      // Auto-switch logic
-      if (prev.autoSwitch && activeKey && activeKey.usageByModel[model] >= 20) {
-        const modelList = GEMINI_MODELS.map((m) => m.id);
-        const currentIndex = modelList.indexOf(model);
-
-        // Find next available model that hasn't hit the limit
-        for (let i = 1; i < modelList.length; i++) {
-          const m = modelList[(currentIndex + i) % modelList.length];
-          if (activeKey.usageByModel[m] < 20) {
-            nextModel = m;
-            break;
-          }
-        }
+      if (prev.keys.some((k) => k.id === id)) {
+        return { ...prev, activeKeyId: id };
       }
-
-      return {
-        ...prev,
-        keys: updatedKeys,
-        selectedModel: nextModel,
-      };
+      return prev;
     });
   }, []);
 
-  const [isDirty, setIsDirty] = useState(false);
+  const setModel = useCallback((model: GeminiModel) => {
+    setState((prev) => ({ ...prev, selectedModel: model }));
+  }, []);
+
+  const setAutoSwitch = useCallback((enabled: boolean) => {
+    setState((prev) => ({ ...prev, autoSwitch: enabled }));
+  }, []);
+
+  const incrementUsage = useCallback((keyId: string, model: GeminiModel) => {
+    setState((prev) => ({
+      ...prev,
+      keys: prev.keys.map((k) => {
+        if (k.id !== keyId) return k;
+        const currentCount = k.usageByModel[model] || 0;
+        return {
+          ...k,
+          usageByModel: {
+            ...k.usageByModel,
+            [model]: currentCount + 1,
+          },
+        };
+      }),
+    }));
+  }, []);
+
+  const clearAllData = useCallback(() => {
+    clearAllResumateStorage();
+    setState(DEFAULT_STATE);
+  }, []);
 
   return (
-    <GeminiConfigContext.Provider value={{...state, isLoaded, addKey, removeKey, setActiveKey, setModel, setAutoSwitch, incrementUsage, isDirty, setIsDirty}}>
+    <GeminiConfigContext.Provider
+      value={{
+        ...state,
+        isLoaded,
+        addKey,
+        removeKey,
+        setActiveKey,
+        setModel,
+        setAutoSwitch,
+        incrementUsage,
+        clearAllData,
+        isDirty,
+        setIsDirty,
+      }}>
       {children}
     </GeminiConfigContext.Provider>
   );
@@ -182,7 +285,7 @@ export function GeminiConfigProvider({children}: {children: ReactNode}) {
 
 export function useGeminiConfig() {
   const context = useContext(GeminiConfigContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useGeminiConfig must be used within a GeminiConfigProvider');
   }
   return context;

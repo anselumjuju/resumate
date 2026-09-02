@@ -2,8 +2,8 @@ import { Metadata } from "next";
 import { TransformWorkspace } from "@/components/transform-workspace";
 
 export const metadata: Metadata = {
-  title: "Job Transformer | Resumate",
-  description: "AI-powered resume and cover letter optimization for specific job roles.",
+  title: "Tailor Resume | Resumate",
+  description: "AI-guided resume and cover letter tailoring for specific job opportunities.",
 };
 
 export default function WorkspacePage() {

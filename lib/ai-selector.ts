@@ -1,4 +1,4 @@
-import { GeminiState, GeminiModel } from '@/types/ai';
+import { GeminiState, GeminiModel, GeminiKeyConfig } from '@/types/ai';
 import { GEMINI_MODELS } from '@/constants/models';
 
 export interface GeminiRequestConfig {
@@ -13,20 +13,27 @@ export type GeminiSelectionResult =
 
 const ALL_MODELS = GEMINI_MODELS.map(m => m.id);
 
-export function selectGeminiConfig(state: GeminiState): GeminiSelectionResult {
-  const { keys, activeKeyId, selectedModel, autoSwitch } = state;
+function isKeyValid(k: GeminiKeyConfig): boolean {
+  if (!k.key) return false;
+  return typeof k.expiresAt !== 'number' || Date.now() < k.expiresAt;
+}
 
-  if (keys.length === 0) {
-    return { success: false, error: 'No Gemini API keys configured.' };
+export function selectGeminiConfig(state: GeminiState): GeminiSelectionResult {
+  const validKeys = (state.keys || []).filter(isKeyValid);
+
+  if (validKeys.length === 0) {
+    return { success: false, error: 'No active or non-expired Gemini API keys available. Please add an API key in Settings.' };
   }
 
+  const { activeKeyId, selectedModel, autoSwitch } = state;
+
   // Find the starting key
-  let startIndex = keys.findIndex(k => k.id === activeKeyId);
+  let startIndex = validKeys.findIndex(k => k.id === activeKeyId);
   if (startIndex === -1) startIndex = 0;
 
   if (!autoSwitch) {
-    const activeKey = keys[startIndex];
-    if (!activeKey) return { success: false, error: 'Active key not found.' };
+    const activeKey = validKeys[startIndex];
+    if (!activeKey) return { success: false, error: 'Active key not found or expired.' };
 
     return {
       success: true,
@@ -38,16 +45,11 @@ export function selectGeminiConfig(state: GeminiState): GeminiSelectionResult {
     };
   }
 
-  // Auto-switch logic
-  // "Try current key + model. If usageCount >= 20: Try same key with different model. If all models exhausted: Switch to next key."
+  // Auto-switch logic across non-expired keys
+  for (let i = 0; i < validKeys.length; i++) {
+    const currentIndex = (startIndex + i) % validKeys.length;
+    const currentKey = validKeys[currentIndex];
 
-  // We'll iterate through keys starting from startIndex
-  for (let i = 0; i < keys.length; i++) {
-    const currentIndex = (startIndex + i) % keys.length;
-    const currentKey = keys[currentIndex];
-
-    // For the current key, we try models
-    // We prioritize the selectedModel if it's the first key
     const modelOrder = [selectedModel, ...ALL_MODELS.filter(m => m !== selectedModel)];
 
     for (const model of modelOrder) {
@@ -66,6 +68,6 @@ export function selectGeminiConfig(state: GeminiState): GeminiSelectionResult {
 
   return {
     success: false,
-    error: 'All configured API keys and models have reached the usage limit (20 requests per model).'
+    error: 'All configured non-expired API keys and models have reached their usage limit (20 requests per model).'
   };
 }

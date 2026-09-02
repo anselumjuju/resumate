@@ -1,139 +1,30 @@
 'use client';
 
-import React, {useState, useEffect} from 'react';
-import {PdfPreview} from '@/components/preview/pdf-preview';
-import {compilePdf} from '@/actions/compile-pdf';
-import {GeminiConfigPanel} from '@/components/ai/gemini-config-panel';
-import {useGeminiConfig} from '@/hooks/use-gemini-config';
-import {optimizeResumeAction} from '@/actions/optimize-resume';
-import {DiffPreview} from '@/components/editor/diff-preview';
-import {selectGeminiConfig} from '@/lib/ai-selector';
-import {LatexEditor} from '@/components/editor/latex-editor';
-import {DEFAULT_COVER_LETTER, DEFAULT_RESUME} from '@/constants/template';
-
-const stopWords = new Set([
-  'and',
-  'the',
-  'to',
-  'of',
-  'a',
-  'in',
-  'for',
-  'is',
-  'on',
-  'that',
-  'by',
-  'this',
-  'with',
-  'i',
-  'you',
-  'it',
-  'not',
-  'or',
-  'be',
-  'are',
-  'as',
-  'at',
-  'from',
-  'an',
-  'was',
-  'we',
-  'will',
-  'can',
-  'your',
-  'our',
-  'have',
-  'has',
-  'but',
-  'all',
-  'any',
-  'their',
-  'what',
-  'which',
-  'who',
-  'when',
-  'where',
-  'how',
-  'do',
-  'does',
-  'did',
-  'if',
-  'then',
-  'else',
-  'than',
-  'about',
-  'more',
-  'some',
-  'such',
-  'only',
-  'other',
-  'these',
-  'those',
-  'into',
-  'over',
-  'up',
-  'down',
-  'out',
-  "can't",
-  "don't",
-  "won't",
-  'should',
-  'would',
-  'could',
-  'may',
-  'might',
-  'must',
-  "we're",
-  "you're",
-  "they're",
-  "it's",
-  'experience',
-  'skills',
-  'years',
-  'work',
-  'team',
-  'development',
-  'software',
-  'role',
-  'using',
-  'knowledge',
-  'ability',
-  'working',
-  'including',
-  'strong',
-  'required',
-  'related',
-  'preferred',
-]);
-
-const extractMissingKeywords = (jd: string, resume: string) => {
-  if (!jd.trim() || !resume.trim()) return [];
-
-  const cleanJd = jd.toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
-  const cleanResume = resume.toLowerCase();
-
-  const jdWords = cleanJd.split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
-  const uniqueJdWords = Array.from(new Set(jdWords));
-
-  const missing = uniqueJdWords.filter((word) => {
-    const regex = new RegExp(`\\b${word}\\b`);
-    return !regex.test(cleanResume);
-  });
-
-  return missing.slice(0, 20); // Top 20 missing keywords
-};
+import React, { useState, useEffect } from 'react';
+import { PdfPreview } from '@/components/preview/pdf-preview';
+import { compilePdf } from '@/actions/compile-pdf';
+import { GeminiConfigPanel } from '@/components/ai/gemini-config-panel';
+import { CandidateProfilePanel } from '@/components/profile/candidate-profile-panel';
+import { useGeminiConfig } from '@/hooks/use-gemini-config';
+import { useCandidateProfile } from '@/hooks/use-candidate-profile';
+import { optimizeResumeAction, analyzeJobAlignmentAction, AnalysisResult } from '@/actions/optimize-resume';
+import { DiffPreview } from '@/components/editor/diff-preview';
+import { selectGeminiConfig } from '@/lib/ai-selector';
+import { LatexEditor } from '@/components/editor/latex-editor';
+import { DEFAULT_COVER_LETTER, DEFAULT_RESUME } from '@/constants/template';
 
 export function TransformWorkspace() {
-  const {incrementUsage, setIsDirty, keys, activeKeyId, selectedModel, autoSwitch} = useGeminiConfig();
+  const { incrementUsage, setIsDirty, keys, activeKeyId, selectedModel, autoSwitch } = useGeminiConfig();
+  const { profile } = useCandidateProfile();
 
   const [companyName, setCompanyName] = useState('');
   const [jobDescription, setJobDescription] = useState('');
 
-  // Master Templates (from localStorage)
+  // Master Templates
   const [baseResume, setBaseResume] = useState('');
   const [baseCoverLetter, setBaseCoverLetter] = useState('');
 
-  // Job-Specific Drafts (The ones being edited/optimized)
+  // Job-Specific Drafts
   const [draftResume, setDraftResume] = useState('');
   const [draftCoverLetter, setDraftCoverLetter] = useState('');
 
@@ -147,18 +38,21 @@ export function TransformWorkspace() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // AI States
+  // Workflow & AI States
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [optimizationResult, setOptimizationResult] = useState<{optimizedBody: string; coverLetter: string} | null>(null);
+  const [optimizationResult, setOptimizationResult] = useState<{ optimizedBody: string; coverLetter: string } | null>(null);
   const [showDiff, setShowDiff] = useState(false);
   const [previousDraftResume, setPreviousDraftResume] = useState('');
   const [previousDraftCoverLetter, setPreviousDraftCoverLetter] = useState('');
 
   // Resizable Panels State
   const [leftWidth, setLeftWidth] = useState(420);
-  const [rightWidth, setRightWidth] = useState(320);
+  const [rightWidth, setRightWidth] = useState(360);
+  const [rightPanelTab, setRightPanelTab] = useState<'profile' | 'ai'>('profile');
   const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
-  const [isRightCollapsed, setIsRightCollapsed] = useState(false);
+  const [isRightCollapsed, setIsRightCollapsed] = useState(true); // Default collapsed for clean spacious view
   const [isContentOnly, setIsContentOnly] = useState(true);
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
@@ -170,7 +64,7 @@ export function TransformWorkspace() {
         setLeftWidth(newWidth);
       }
       if (isResizingRight) {
-        const newWidth = Math.min(Math.max(window.innerWidth - e.clientX, 280), 500);
+        const newWidth = Math.min(Math.max(window.innerWidth - e.clientX, 280), 480);
         setRightWidth(newWidth);
       }
     };
@@ -178,75 +72,56 @@ export function TransformWorkspace() {
     const handleMouseUp = () => {
       setIsResizingLeft(false);
       setIsResizingRight(false);
-      document.body.style.cursor = 'default';
     };
 
     if (isResizingLeft || isResizingRight) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
     }
-
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizingLeft, isResizingRight]);
 
-  // Hydrate from sessionStorage and localStorage
+  // Load Initial Templates and Session Jobs
   useEffect(() => {
-    const savedCompany = localStorage.getItem('target_company');
-    const savedJD = localStorage.getItem('target_jd');
-    const savedBaseResume = localStorage.getItem('base_resume') || DEFAULT_RESUME;
-    const savedBaseCL = localStorage.getItem('base_cover_letter') || DEFAULT_COVER_LETTER;
+    const savedResume = localStorage.getItem('base_resume');
+    const savedCL = localStorage.getItem('base_cover_letter');
+    const defaultRes = savedResume || DEFAULT_RESUME;
+    const defaultCL = savedCL || DEFAULT_COVER_LETTER;
 
-    if (savedCompany) setCompanyName(savedCompany);
-    if (savedJD) setJobDescription(savedJD);
-    setBaseResume(savedBaseResume);
-    setBaseCoverLetter(savedBaseCL);
+    setBaseResume(defaultRes);
+    setBaseCoverLetter(defaultCL);
+    setDraftResume(defaultRes);
+    setDraftCoverLetter(defaultCL);
 
-    // Always start fresh from base templates
-    setDraftResume(savedBaseResume);
-    setDraftCoverLetter(savedBaseCL);
+    const sessionCompany = sessionStorage.getItem('target_company');
+    const sessionJd = sessionStorage.getItem('target_jd');
+    if (sessionCompany) setCompanyName(sessionCompany);
+    if (sessionJd) setJobDescription(sessionJd);
 
     setIsHydrated(true);
   }, []);
 
-  // Save metadata to localStorage when values change
+  // Track Unsaved Changes
   useEffect(() => {
     if (!isHydrated) return;
-    localStorage.setItem('target_company', companyName);
-    localStorage.setItem('target_jd', jobDescription);
-  }, [companyName, jobDescription, isHydrated]);
+    const hasUnsavedChanges =
+      draftResume !== baseResume ||
+      draftCoverLetter !== baseCoverLetter ||
+      companyName !== '' ||
+      jobDescription !== '';
+    setIsDirty(hasUnsavedChanges);
+  }, [draftResume, draftCoverLetter, baseResume, baseCoverLetter, companyName, jobDescription, isHydrated, setIsDirty]);
 
-  // Prevent accidental navigation when changes are present
+  // Debounced Live PDF Compilation
   useEffect(() => {
-    const isResumeModified = draftResume !== baseResume;
-    const isCLModified = draftCoverLetter !== baseCoverLetter;
-    const dirty = isResumeModified || isCLModified;
-
-    setIsDirty(dirty);
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (dirty) {
-        e.preventDefault();
-        e.returnValue = ''; // Required for most browsers
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      setIsDirty(false); // Clean up dirty state on unmount
-    };
-  }, [draftResume, baseResume, draftCoverLetter, baseCoverLetter, setIsDirty]);
-
-  // Compile draft for preview
-  useEffect(() => {
-    const currentDraft = activeTab === 'resume' ? draftResume : draftCoverLetter;
-    if (!isHydrated || !currentDraft) return;
+    if (!isHydrated) return;
 
     let isMounted = true;
+    const currentDraft = activeTab === 'resume' ? draftResume : draftCoverLetter;
+
     const loadPreview = async () => {
       setIsCompilingPreview(true);
       setPreviewError(null);
@@ -266,7 +141,7 @@ export function TransformWorkspace() {
       }
     };
 
-    const timer = setTimeout(loadPreview, 500); // Add a small debounce
+    const timer = setTimeout(loadPreview, 500);
 
     return () => {
       isMounted = false;
@@ -288,24 +163,23 @@ export function TransformWorkspace() {
     };
 
     localStorage.setItem('job_history', JSON.stringify([newJob, ...history]));
-    alert('Job saved to history!');
+    alert('Target saved to history!');
   };
 
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
       const sanitizedCompany =
-        companyName.trim() ?
-          companyName
-            .trim()
-            .replace(/[^a-z0-9]/gi, '-')
-            .toLowerCase()
-        : 'optimized';
+        companyName.trim()
+          ? companyName
+              .trim()
+              .replace(/[^a-z0-9]/gi, '-')
+              .toLowerCase()
+          : 'tailored';
 
       const filePrefix = `resume-${sanitizedCompany}`;
 
       if (activeTab === 'resume') {
-        // Fallback compile if preview isn't ready
         let pdfData = resumePdfBase64;
         if (!pdfData) {
           const result = await compilePdf(draftResume);
@@ -323,7 +197,6 @@ export function TransformWorkspace() {
           link.click();
         }
       } else {
-        // Handle cover letter export
         const result = await compilePdf(draftCoverLetter);
         if (!result.success || !result.pdfBase64) {
           throw new Error(result.error || 'Cover letter compilation failed');
@@ -341,33 +214,59 @@ export function TransformWorkspace() {
     }
   };
 
-  const handleOptimize = async () => {
-    if (!baseResume || !jobDescription) return;
+  // Step 3: Analyze Match
+  const handleAnalyzeFit = async () => {
+    if (!draftResume || !jobDescription.trim()) {
+      alert('Please provide a Job Description to analyze match.');
+      return;
+    }
 
-    setIsOptimizing(true);
+    setIsAnalyzing(true);
     try {
-      // 1. Select key/model
-      const selection = selectGeminiConfig({keys, activeKeyId, selectedModel, autoSwitch});
+      const selection = selectGeminiConfig({ keys, activeKeyId, selectedModel, autoSwitch });
       if (!selection.success) {
         alert(selection.error);
         return;
       }
 
-      // 2. Call AI - Use draftResume so manual edits are preserved
-      // ALSO use draftCoverLetter so manual edits to CL are preserved
-      const result = await optimizeResumeAction(draftResume, jobDescription, selection.config, draftCoverLetter);
+      const result = await analyzeJobAlignmentAction(draftResume, jobDescription, selection.config, profile);
+      if (result.success) {
+        setAnalysisResult(result);
+        incrementUsage(selection.config.keyId, selection.config.model);
+      } else {
+        alert(result.error || 'Failed to analyze job alignment.');
+      }
+    } catch (err: any) {
+      alert(`Analysis error: ${err.message}`);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Step 4: Tailor Resume
+  const handleTailorResume = async () => {
+    if (!draftResume || !jobDescription.trim()) return;
+
+    setIsOptimizing(true);
+    try {
+      const selection = selectGeminiConfig({ keys, activeKeyId, selectedModel, autoSwitch });
+      if (!selection.success) {
+        alert(selection.error);
+        return;
+      }
+
+      const result = await optimizeResumeAction(draftResume, jobDescription, selection.config, draftCoverLetter, profile);
 
       if (result.success && result.optimizedBody && result.coverLetter) {
-        // Save current drafts for potential revert
         setPreviousDraftResume(draftResume);
         setPreviousDraftCoverLetter(draftCoverLetter);
 
-        // Update resume draft immediately (in-document) to trigger preview
+        // Splice optimized body into resume
         const documentMatch = draftResume.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
         const [preamble, post] = [documentMatch?.[1] || '', documentMatch?.[2] || ''];
         setDraftResume(`${preamble}\n${result.optimizedBody}\n${post}`);
 
-        // Update cover letter draft immediately
+        // Splice optimized body into cover letter
         const clMatch = draftCoverLetter.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
         if (clMatch) {
           setDraftCoverLetter(`${clMatch[1]}\n${result.coverLetter}\n${clMatch[2]}`);
@@ -380,13 +279,10 @@ export function TransformWorkspace() {
           coverLetter: result.coverLetter,
         });
         setShowDiff(true);
-
-        // 3. Increment usage (even if success, we used tokens)
         incrementUsage(selection.config.keyId, selection.config.model);
       } else {
-        // Still increment usage for the key if we hit an error (tokens were likely consumed)
         incrementUsage(selection.config.keyId, selection.config.model);
-        alert(result.error || 'Optimization failed');
+        alert(result.error || 'Tailoring optimization failed');
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -398,7 +294,6 @@ export function TransformWorkspace() {
   const handleAccept = (finalBody: string) => {
     if (!optimizationResult) return;
 
-    // The 'finalBody' is the resolved content from the DiffPreview
     if (activeTab === 'resume') {
       const documentMatch = draftResume.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
       const [preamble, post] = [documentMatch?.[1] || '', documentMatch?.[2] || ''];
@@ -416,11 +311,9 @@ export function TransformWorkspace() {
     setOptimizationResult(null);
     setPreviousDraftResume('');
     setPreviousDraftCoverLetter('');
-    alert('AI suggestions applied! (Master template remains untouched)');
   };
 
   const handleReject = () => {
-    // Revert both to previous drafts
     if (previousDraftResume) setDraftResume(previousDraftResume);
     if (previousDraftCoverLetter) setDraftCoverLetter(previousDraftCoverLetter);
 
@@ -430,147 +323,273 @@ export function TransformWorkspace() {
     setPreviousDraftCoverLetter('');
   };
 
-  const previewTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const handlePreviewUpdate = (mergedBody: string) => {
-    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
+  const currentPreviewPdf = activeTab === 'resume' ? resumePdfBase64 : letterPdfBase64;
+  const currentCode = activeTab === 'resume' ? draftResume : draftCoverLetter;
 
-    previewTimeoutRef.current = setTimeout(() => {
-      if (activeTab === 'resume') {
-        const documentMatch = previousDraftResume.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
-        const [preamble, post] = [documentMatch?.[1] || '', documentMatch?.[2] || ''];
-        setDraftResume(`${preamble}\n${mergedBody}\n${post}`);
-      } else {
-        const documentMatch = previousDraftCoverLetter.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
-        if (documentMatch) {
-          setDraftCoverLetter(`${documentMatch[1]}\n${mergedBody}\n${documentMatch[2]}`);
-        } else {
-          setDraftCoverLetter(mergedBody);
-        }
-      }
-    }, 300);
-  };
-
-  const missingKeywords = React.useMemo(() => {
-    return extractMissingKeywords(jobDescription, baseResume);
-  }, [jobDescription, baseResume]);
-
-  if (!isHydrated) {
-    return <div className='flex-1 flex items-center justify-center text-neutral-400'>Loading workspace...</div>;
-  }
+  // Derive workflow step for the header indicator
+  const currentStepNumber: number = (currentPreviewPdf && !showDiff && analysisResult) ? 6 : showDiff ? 5 : analysisResult ? 4 : jobDescription.trim() ? 3 : 2;
 
   return (
-    <div className='flex flex-col h-full w-full bg-black'>
-      {/* Sub-toolbar */}
-      <div className='flex items-center justify-between px-6 h-14 border-b border-white/5 bg-black/40 backdrop-blur-xl shrink-0'>
-        <div className='flex items-center gap-4'>
-          <span className='text-xs font-black uppercase tracking-[0.3em] text-white/40'>Intelligence</span>
-          <span className='px-2.5 py-0.5 rounded-lg text-[9px] uppercase font-black bg-accent/10 text-accent border border-accent/20 tracking-widest'>Neural Flow</span>
+    <div className='flex flex-col h-full w-full bg-[#09090b] overflow-hidden select-none'>
+      {/* ── Workflow Progress & Top Bar ── */}
+      <div className='px-6 h-14 border-b border-white/8 bg-[#0c0c0e] shrink-0 flex items-center justify-between gap-4'>
+        {/* Title and Step Guidance */}
+        <div className='flex items-center gap-3 min-w-0'>
+          <h2 className='text-sm font-bold text-white tracking-tight shrink-0'>
+            Tailor to Job
+          </h2>
+
+          <div className='hidden sm:flex items-center gap-2 text-xs text-white/40 pl-3 border-l border-white/8'>
+            <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+              currentStepNumber >= 4 ? 'bg-accent/10 text-accent border border-accent/20' : 'bg-white/5 text-white/60'
+            }`}>
+              Step {currentStepNumber} of 6
+            </span>
+            <span className='truncate text-white/60'>
+              {currentStepNumber === 2 && 'Paste Job Description'}
+              {currentStepNumber === 3 && 'Ready to Analyze Match'}
+              {currentStepNumber === 4 && 'Match Analyzed → Tailor Resume'}
+              {currentStepNumber === 5 && 'Review AI Diff'}
+              {currentStepNumber === 6 && 'Ready to Export PDF'}
+            </span>
+          </div>
         </div>
 
-        <div className='flex items-center gap-4'>
+        {/* Workflow Actions */}
+        <div className='flex items-center gap-2 shrink-0'>
           <button
             onClick={handleSaveJob}
             disabled={!companyName.trim() && !jobDescription.trim()}
-            className='px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white/80 transition-colors disabled:opacity-30'>
-            Sync History
+            className='hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white/60 hover:text-white border border-white/10 hover:border-white/20 rounded-lg transition-all disabled:opacity-20'
+            title='Save target to recent history'>
+            Save Target
           </button>
+
+          {!analysisResult ? (
+            <button
+              onClick={handleAnalyzeFit}
+              disabled={isAnalyzing || !jobDescription.trim()}
+              className='flex items-center gap-2 px-4 py-1.5 text-xs font-bold bg-accent text-black rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md disabled:opacity-30'>
+              {isAnalyzing ? (
+                <>
+                  <div className='w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin' />
+                  <span>Analyzing…</span>
+                </>
+              ) : (
+                <>
+                  <span>Analyze Match</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={handleTailorResume}
+              disabled={isOptimizing}
+              className='flex items-center gap-2 px-4 py-1.5 text-xs font-bold bg-accent text-black rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md disabled:opacity-30'>
+              {isOptimizing ? (
+                <>
+                  <div className='w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin' />
+                  <span>Tailoring…</span>
+                </>
+              ) : (
+                <>
+                  <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2.5' d='M13 10V3L4 14h7v7l9-11h-7z' />
+                  </svg>
+                  <span>Tailor Resume</span>
+                </>
+              )}
+            </button>
+          )}
+
           <button
-            disabled={!activeKeyId || !companyName.trim() || !jobDescription.trim() || isOptimizing}
-            onClick={handleOptimize}
-            className='flex items-center gap-2 px-6 py-2 text-[10px] font-black uppercase tracking-widest text-black bg-white rounded-xl hover:bg-accent transition-all duration-300 active:scale-95 disabled:opacity-50 shadow-[0_0_20px_rgba(255,255,255,0.1)]'>
-            {isOptimizing ?
-              <svg className='animate-spin h-3.5 w-3.5 text-black' fill='none' viewBox='0 0 24 24'>
-                <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='3'></circle>
-                <path
-                  className='opacity-75'
-                  fill='currentColor'
-                  d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
-              </svg>
-            : <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='3' d='M13 10V3L4 14h7v7l9-11h-7z'></path>
-              </svg>
-            }
-            {isOptimizing ? 'Thinking…' : 'Optimize Flow'}
+            onClick={handleDownload}
+            disabled={isDownloading || !currentPreviewPdf}
+            className='flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-white text-black rounded-lg hover:bg-neutral-200 transition-all disabled:opacity-30'>
+            <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4' />
+            </svg>
+            <span>Export</span>
+          </button>
+
+          {/* Toggle Inspector / Helper Panel */}
+          <button
+            onClick={() => setIsRightCollapsed(!isRightCollapsed)}
+            className={`p-2 rounded-lg border transition-all ${
+              !isRightCollapsed ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
+            }`}
+            title='Toggle Profile & AI Inspector'>
+            <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M4 6h16M4 12h16m-7 6h7' />
+            </svg>
           </button>
         </div>
       </div>
 
-      {/* Main Split Content */}
+      {/* ── Main Multi-Pane Content ── */}
       <main className={`flex-1 flex overflow-hidden relative ${isResizingLeft || isResizingRight ? 'select-none' : ''}`}>
-        {/* Resize Overlay to catch mouse events over iframes */}
         {(isResizingLeft || isResizingRight) && <div className='absolute inset-0 z-50 cursor-col-resize' />}
-        {/* ── Left Panel: Job Context ── */}
+
+        {/* ── Left Pane: Job Input & Match Analysis ── */}
         <section
-          style={{width: isLeftCollapsed ? '48px' : `${leftWidth}px`}}
-          className={`shrink-0 border-r border-white/20 flex flex-col overflow-hidden bg-black ${isResizingLeft ? '' : 'transition-[width] duration-500 ease-in-out'}`}>
-          {/* Panel header */}
-          <div className='px-6 h-12 border-b border-white/20 bg-white/3 shrink-0 flex items-center justify-between shadow-sm'>
+          style={{ width: isLeftCollapsed ? '44px' : `${leftWidth}px` }}
+          className={`shrink-0 border-r border-white/8 flex flex-col overflow-hidden bg-[#0c0c0e] ${
+            isResizingLeft ? '' : 'transition-[width] duration-300 ease-in-out'
+          }`}>
+          {/* Header */}
+          <div className='px-4 h-10 border-b border-white/8 bg-white/[0.01] shrink-0 flex items-center justify-between'>
             {!isLeftCollapsed && (
-              <div className='flex items-center gap-3'>
-                <div className='w-1.5 h-1.5 rounded-full bg-white/20' />
-                <span className='text-[9px] font-black uppercase tracking-[0.4em] text-white/20'>Opportunity Graph</span>
-              </div>
+              <span className='text-xs font-semibold text-white/50 uppercase tracking-wider'>
+                Target Job Description
+              </span>
             )}
-            <button onClick={() => setIsLeftCollapsed(!isLeftCollapsed)} className='p-1.5 hover:bg-white/5 rounded-lg transition-colors'>
-              <svg className={`w-4 h-4 text-white/20 transition-transform ${isLeftCollapsed ? 'rotate-0' : 'rotate-180'}`} fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='3' d='M9 5l7 7-7 7' />
+            <button
+              onClick={() => setIsLeftCollapsed(!isLeftCollapsed)}
+              className='p-1 hover:bg-white/5 rounded transition-colors ml-auto text-white/30 hover:text-white'
+              title={isLeftCollapsed ? 'Expand Job Panel' : 'Collapse Job Panel'}>
+              <svg className={`w-4 h-4 transition-transform ${isLeftCollapsed ? 'rotate-0' : 'rotate-180'}`} fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M9 5l7 7-7 7' />
               </svg>
             </button>
           </div>
 
           {!isLeftCollapsed && (
-            <div className='flex-1 overflow-y-auto custom-scrollbar p-6 space-y-10'>
-              {/* Company Name */}
-              <div className='space-y-4'>
-                <label htmlFor='companyName' className='block text-[10px] font-black text-white/20 uppercase tracking-[0.2em]'>
-                  Target Company
+            <div className='flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5'>
+              {/* Target Company */}
+              <div className='space-y-1.5'>
+                <label htmlFor='companyName' className='block text-xs font-semibold text-white/60'>
+                  Company / Role Name
                 </label>
-                <div className='relative group'>
-                  <input
-                    id='companyName'
-                    type='text'
-                    placeholder='Entity name…'
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className='w-full px-4 py-3 bg-white/5er border-white/[0.07] rounded-xl focus:border-accent/40 focus:bg-white/4 text-base font-semibold tracking-tighter text-white transition-all placeholder:text-white/20 outline-none'
-                  />
-                  <div className='absolute bottom-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-accent/20 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity' />
-                </div>
+                <input
+                  id='companyName'
+                  type='text'
+                  placeholder='e.g. Stripe, Senior Frontend Engineer…'
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  className='w-full px-3.5 py-2 bg-white/5 border border-white/10 rounded-xl focus:border-accent/40 focus:bg-white/10 text-xs font-medium text-white transition-all placeholder:text-white/20 outline-none'
+                />
               </div>
 
-              {/* Job Description */}
-              <div className='flex flex-col gap-4'>
+              {/* Job Description Textarea */}
+              <div className='space-y-1.5'>
                 <div className='flex items-center justify-between'>
-                  <label htmlFor='jobDescription' className='block text-[10px] font-black text-white/20 uppercase tracking-[0.2em]'>
-                    System Constraints
+                  <label htmlFor='jobDescription' className='block text-xs font-semibold text-white/60'>
+                    Job Description
                   </label>
                   {jobDescription.length > 0 && (
-                    <span className='text-[10px] font-black text-accent tabular-nums uppercase tracking-widest'>{jobDescription.split(/\s+/).filter(Boolean).length} Tokens</span>
+                    <span className='text-[10px] text-accent font-bold tabular-nums'>
+                      {jobDescription.split(/\s+/).filter(Boolean).length} Words
+                    </span>
                   )}
                 </div>
                 <textarea
                   id='jobDescription'
-                  placeholder='Paste raw data here…'
+                  placeholder='Paste the full job description requirements here…'
                   value={jobDescription}
-                  onChange={(e) => setJobDescription(e.target.value)}
-                  className='w-full min-h-100 px-6 py-6 bg-white/5 border border-white/[0.07] rounded-xl focus:border-accent/40 focus:bg-white/4 text-base font-semibold tracking-tighter text-white transition-all placeholder:text-white/20 outline-none'
+                  onChange={(e) => {
+                    setJobDescription(e.target.value);
+                    if (analysisResult) setAnalysisResult(null);
+                  }}
+                  rows={8}
+                  className='w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:border-accent/40 focus:bg-white/10 text-xs font-mono text-white/90 transition-all placeholder:text-white/20 outline-none resize-y custom-scrollbar leading-relaxed'
                 />
               </div>
 
-              {/* Keyword Analysis */}
-              {missingKeywords.length > 0 && (
-                <div className='p-6 rounded-xl bg-accent/5 border border-accent/10'>
-                  <div className='flex items-center gap-3 mb-4'>
-                    <div className='w-1.5 h-1.5 rounded-full bg-accent animate-pulse' />
-                    <p className='text-[10px] font-black text-accent uppercase tracking-widest'>Optimization Gaps</p>
+              {/* ── AI Match Analysis Output Card ── */}
+              {analysisResult && (
+                <div className='p-4 rounded-xl bg-[#121215] border border-white/10 space-y-4 animate-in fade-in duration-200'>
+                  <div className='flex items-center justify-between'>
+                    <div className='flex items-center gap-2'>
+                      <span className='w-2 h-2 rounded-full bg-accent animate-pulse' />
+                      <h4 className='text-xs font-bold text-white uppercase tracking-wider'>
+                        Match Analysis
+                      </h4>
+                    </div>
+                    <button
+                      onClick={handleAnalyzeFit}
+                      disabled={isAnalyzing}
+                      className='text-[11px] text-white/40 hover:text-white underline font-medium'>
+                      Re-analyze
+                    </button>
                   </div>
-                  <div className='flex flex-wrap gap-2'>
-                    {missingKeywords.map((word) => (
-                      <span key={word} className='px-2.5 py-1 bg-white/5 text-white/60 text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/5'>
-                        {word}
+
+                  {analysisResult.summary && (
+                    <p className='text-xs text-white/75 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5'>
+                      {analysisResult.summary}
+                    </p>
+                  )}
+
+                  {/* Verified Matching Skills */}
+                  <div className='space-y-1.5'>
+                    <span className='text-[10px] font-bold text-green-400 uppercase tracking-wider flex items-center gap-1'>
+                      <span>✓</span> Verified Matches ({analysisResult.matchingSkills.length})
+                    </span>
+                    <div className='flex flex-wrap gap-1.5'>
+                      {analysisResult.matchingSkills.map((s) => (
+                        <span key={s} className='px-2 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-green-300 text-[11px] font-medium'>
+                          {s}
+                        </span>
+                      ))}
+                      {analysisResult.matchingSkills.length === 0 && (
+                        <span className='text-xs text-white/30 italic'>No direct matches detected.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Safe Inferred Skills */}
+                  {analysisResult.safeInferredSkills.length > 0 && (
+                    <div className='space-y-1.5'>
+                      <span className='text-[10px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1'>
+                        <span>✦</span> Safe Inferences ({analysisResult.safeInferredSkills.length})
                       </span>
-                    ))}
-                  </div>
+                      <div className='flex flex-wrap gap-1.5'>
+                        {analysisResult.safeInferredSkills.map((inf, idx) => (
+                          <span
+                            key={idx}
+                            title={inf.reason || `Inferred from ${inf.source}`}
+                            className='px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[11px] font-medium flex items-center gap-1'>
+                            <span>{inf.source} → {inf.implied}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Guarded / Unsupported Skills */}
+                  {analysisResult.unsupportedSkills.length > 0 && (
+                    <div className='space-y-1.5 pt-2 border-t border-white/5'>
+                      <div className='flex items-center justify-between'>
+                        <span className='text-[10px] font-bold text-amber-400 uppercase tracking-wider'>
+                          ⚠️ Guarded ({analysisResult.unsupportedSkills.length})
+                        </span>
+                        <span className='text-[9px] text-amber-300/80 bg-amber-500/10 px-1.5 py-0.2 rounded'>
+                          Will Not Fabricate
+                        </span>
+                      </div>
+                      <div className='flex flex-wrap gap-1.5'>
+                        {analysisResult.unsupportedSkills.map((s) => (
+                          <span key={s} className='px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300/70 text-[11px] line-through decoration-amber-500/40'>
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tailor CTA */}
+                  <button
+                    onClick={handleTailorResume}
+                    disabled={isOptimizing}
+                    className='w-full py-2.5 bg-accent text-black text-xs font-bold rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-md flex items-center justify-center gap-2'>
+                    {isOptimizing ? (
+                      <>
+                        <div className='w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin' />
+                        <span>Generating Tailored Draft…</span>
+                      </>
+                    ) : (
+                      <span>Proceed to Tailor Resume →</span>
+                    )}
+                  </button>
                 </div>
               )}
             </div>
@@ -581,206 +600,210 @@ export function TransformWorkspace() {
         {!isLeftCollapsed && (
           <div
             onMouseDown={() => setIsResizingLeft(true)}
-            className={`w-1.5 h-full cursor-col-resize transition-all z-30 shrink-0 -mx-0.5 group/resizer relative ${isResizingLeft ? 'bg-accent/40' : 'hover:bg-white/5'}`}>
-            <div
-              className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors ${isResizingLeft ? 'bg-accent' : 'bg-white/10 group-hover/resizer:bg-accent/40'}`}
-            />
+            className={`w-1.5 h-full cursor-col-resize z-30 shrink-0 relative transition-all ${
+              isResizingLeft ? 'bg-accent/40' : 'hover:bg-white/10'
+            }`}>
+            <div className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px ${isResizingLeft ? 'bg-accent' : 'bg-white/10'}`} />
           </div>
         )}
 
-        {/* ── Center Panel: Preview/Editor ── */}
-        <section className='flex-1 flex flex-col overflow-hidden bg-black relative'>
-          {/* Tab Header */}
-          <div className='px-6 h-12 border-b border-white/20 bg-white/3 backdrop-blur-xl shrink-0 flex items-center justify-between gap-4 shadow-sm'>
-            <div className='flex items-center gap-6'>
-              <div className='flex items-center gap-4'>
-                <div className='flex bg-white/5 rounded-xl p-1 gap-1'>
+        {/* ── Center Pane: Preview / Diff / Editor ── */}
+        <section className='flex-1 flex flex-col overflow-hidden bg-[#09090b] relative'>
+          {/* Center Header Tabs */}
+          <div className='px-5 h-10 border-b border-white/8 bg-white/[0.01] shrink-0 flex items-center justify-between gap-4'>
+            <div className='flex items-center gap-3'>
+              <div className='flex bg-white/5 rounded-lg p-0.5 gap-0.5 border border-white/5'>
+                <button
+                  onClick={() => setActiveTab('resume')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                    activeTab === 'resume' ? 'bg-accent text-black shadow-sm' : 'text-white/40 hover:text-white'
+                  }`}>
+                  Resume
+                </button>
+                <button
+                  onClick={() => setActiveTab('cover_letter')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                    activeTab === 'cover_letter' ? 'bg-accent text-black shadow-sm' : 'text-white/40 hover:text-white'
+                  }`}>
+                  Cover Letter
+                </button>
+              </div>
+
+              {!showDiff && (
+                <div className='flex items-center bg-white/5 rounded-lg p-0.5 gap-0.5 border border-white/5'>
                   <button
-                    onClick={() => setActiveTab('resume')}
-                    className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === 'resume' ? 'bg-white text-black shadow-lg' : 'text-white/40 hover:text-white/70'}`}>
-                    Resume
+                    onClick={() => setViewMode('preview')}
+                    className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${
+                      viewMode === 'preview' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/70'
+                    }`}>
+                    PDF Preview
                   </button>
                   <button
-                    onClick={() => setActiveTab('cover_letter')}
-                    className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === 'cover_letter' ? 'bg-white text-black shadow-lg' : 'text-white/40 hover:text-white/70'}`}>
-                    Letter
+                    onClick={() => setViewMode('editor')}
+                    className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${
+                      viewMode === 'editor' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/70'
+                    }`}>
+                    LaTeX Code
                   </button>
                 </div>
-
-                {/* Status Chip */}
-                {showDiff ?
-                  <span className='flex items-center gap-2 px-3 py-1 bg-accent/10 text-accent text-[9px] font-black rounded-lg border border-accent/20 animate-pulse uppercase tracking-widest'>
-                    In Review
-                  </span>
-                : draftResume !== baseResume ?
-                  <span className='flex items-center gap-2 px-3 py-1 bg-white/5 text-white/40 text-[9px] font-black rounded-lg border border-white/10 uppercase tracking-widest'>
-                    Modified
-                  </span>
-                : null}
-              </div>
-
-              {/* View Mode Switcher */}
-              <div className='flex items-center gap-1'>
-                <button
-                  onClick={() => setViewMode('preview')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'preview' ? 'bg-white/10 text-accent' : 'text-white/20 hover:text-white/60'}`}
-                  title='Visual Preview'>
-                  <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2.5' d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'></path>
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth='2.5'
-                      d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z'></path>
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setViewMode('editor')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'editor' ? 'bg-white/10 text-accent' : 'text-white/20 hover:text-white/60'}`}
-                  title='Code Editor'>
-                  <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth='2.5'
-                      d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'></path>
-                  </svg>
-                </button>
-
-                {/* Focus Mode Toggle (Only in Editor) */}
-                {viewMode === 'editor' && (
-                  <button
-                    onClick={() => setIsContentOnly(!isContentOnly)}
-                    className={`p-2 rounded-lg transition-all ${isContentOnly ? 'bg-accent/10 text-accent' : 'text-white/20 hover:text-white/60'}`}
-                    title={isContentOnly ? 'Show Full LaTeX' : 'Focus Mode (Hide Styles)'}>
-                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2.5' d='M4 6h16M4 12h16m-7 6h7' />
-                    </svg>
-                  </button>
-                )}
-              </div>
+              )}
             </div>
 
-            {/* Download */}
-            <button
-              onClick={handleDownload}
-              disabled={isDownloading || isCompilingPreview}
-              className='flex items-center gap-2 px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-white text-black rounded-xl hover:bg-accent transition-all duration-300 disabled:opacity-30'>
-              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='3' d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4'></path>
-              </svg>
-              <span>Export</span>
-            </button>
+            {viewMode === 'editor' && !showDiff && (
+              <button
+                onClick={() => setIsContentOnly(!isContentOnly)}
+                className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition-all ${
+                  isContentOnly ? 'bg-white/5 border-white/10 text-white/50' : 'bg-accent/10 border-accent/30 text-accent'
+                }`}>
+                {isContentOnly ? 'Body Only' : 'Full LaTeX'}
+              </button>
+            )}
           </div>
 
-          {/* Preview/Editor area */}
-          <div className='flex-1 flex flex-col overflow-hidden'>
-            {optimizationResult && showDiff ?
-              <div className='flex-1 flex flex-col overflow-hidden p-5 gap-5'>
-                {/* Top: Diff Review (Flexible height) */}
-                <div className='h-[40%] shrink-0'>
+          {/* Center Main View Area */}
+          <div className='flex-1 overflow-hidden relative'>
+            {showDiff && optimizationResult ? (
+              <div className='h-full flex flex-col'>
+                {/* Diff Review Bar */}
+                <div className='px-5 py-2.5 bg-[#121215] border-b border-accent/30 flex items-center justify-between'>
+                  <div className='flex items-center gap-2'>
+                    <span className='w-2 h-2 rounded-full bg-accent animate-pulse' />
+                    <span className='text-xs font-bold text-white'>
+                      Review AI Tailoring Suggestions (Original vs Proposed)
+                    </span>
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    <button
+                      onClick={handleReject}
+                      className='px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold rounded-lg border border-red-500/20 transition-all'>
+                      Reject
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleAccept(
+                          activeTab === 'resume'
+                            ? optimizationResult.optimizedBody
+                            : optimizationResult.coverLetter
+                        )
+                      }
+                      className='px-4 py-1 bg-accent text-black text-xs font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-md'>
+                      Accept Changes
+                    </button>
+                  </div>
+                </div>
+
+                <div className='flex-1 overflow-hidden'>
                   <DiffPreview
-                    isVisible={showDiff}
                     original={
-                      activeTab === 'resume' ?
-                        previousDraftResume.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/)?.[1]?.trim() || ''
-                      : previousDraftCoverLetter.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/)?.[1]?.trim() || previousDraftCoverLetter
+                      activeTab === 'resume'
+                        ? previousDraftResume.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/)?.[1]?.trim() || previousDraftResume
+                        : previousDraftCoverLetter.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/)?.[1]?.trim() || previousDraftCoverLetter
                     }
-                    updated={activeTab === 'resume' ? optimizationResult.optimizedBody : optimizationResult.coverLetter}
-                    onAccept={(finalBody) => handleAccept(finalBody)}
+                    updated={
+                      activeTab === 'resume'
+                        ? optimizationResult.optimizedBody
+                        : optimizationResult.coverLetter
+                    }
+                    isVisible={showDiff}
+                    onAccept={handleAccept}
                     onReject={handleReject}
-                    onPreviewUpdate={handlePreviewUpdate}
                   />
                 </div>
-
-                {/* Bottom: Live PDF Preview */}
-                <div className='flex-1 border-t border-white/20 pt-5'>
-                  {/* Bottom: Resulting Preview */}
-                  <div className='flex-1 h-full rounded-xl overflow-hidden border border-white/5 bg-black'>
-                    <PdfPreview isLoading={isCompilingPreview} pdfBase64={activeTab === 'resume' ? resumePdfBase64 : letterPdfBase64} error={previewError} hideControls={true} />
-                  </div>
-                </div>
               </div>
-            : <div className='flex-1 p-5 overflow-auto relative'>
-                {viewMode === 'preview' ?
-                  <PdfPreview isLoading={isCompilingPreview} pdfBase64={activeTab === 'resume' ? resumePdfBase64 : letterPdfBase64} error={previewError} hideControls={false} />
-                : <div className='w-full h-full rounded-xl overflow-hidden border border-white/5 bg-black'>
-                    <LatexEditor
-                      value={(() => {
-                        const raw = activeTab === 'resume' ? draftResume : draftCoverLetter;
-                        if (!isContentOnly) return raw;
-                        const match = raw.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
-                        return match ? match[1].trim() : raw;
-                      })()}
-                      onChange={(newVal) => {
-                        const currentRaw = activeTab === 'resume' ? draftResume : draftCoverLetter;
-                        const setter = activeTab === 'resume' ? setDraftResume : setDraftCoverLetter;
-
-                        if (!isContentOnly) {
-                          setter(newVal);
-                          return;
-                        }
-
-                        const match = currentRaw.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
-                        if (match) {
-                          setter(`${match[1]}\n${newVal}\n${match[2]}`);
-                        } else {
-                          setter(newVal);
-                        }
-                      }}
-                    />
-                  </div>
-                }
+            ) : viewMode === 'preview' ? (
+              <div className='h-full p-4 lg:p-6 overflow-auto flex items-center justify-center'>
+                <PdfPreview
+                  pdfBase64={currentPreviewPdf}
+                  isLoading={isCompilingPreview}
+                  error={previewError}
+                />
               </div>
-            }
+            ) : (
+              <LatexEditor
+                value={(() => {
+                  const raw = currentCode;
+                  if (!isContentOnly) return raw;
+                  const match = raw.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
+                  return match ? match[1].trim() : raw;
+                })()}
+                onChange={(newVal) => {
+                  if (activeTab === 'resume') {
+                    if (isContentOnly) {
+                      const match = draftResume.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
+                      const [preamble, post] = [match?.[1] || '', match?.[2] || ''];
+                      setDraftResume(`${preamble}\n${newVal}\n${post}`);
+                    } else {
+                      setDraftResume(newVal);
+                    }
+                  } else {
+                    if (isContentOnly) {
+                      const match = draftCoverLetter.match(/([\s\S]*?\\begin\{document\})[\s\S]*?(\\end\{document\}[\s\S]*)/);
+                      const [preamble, post] = [match?.[1] || '', match?.[2] || ''];
+                      setDraftCoverLetter(`${preamble}\n${newVal}\n${post}`);
+                    } else {
+                      setDraftCoverLetter(newVal);
+                    }
+                  }
+                }}
+              />
+            )}
           </div>
         </section>
 
-        {/* Right Resizer */}
         {/* Right Resizer */}
         {!isRightCollapsed && (
           <div
             onMouseDown={() => setIsResizingRight(true)}
-            className={`w-1.5 h-full cursor-col-resize transition-all z-30 shrink-0 -mx-0.5 group/resizer relative ${isResizingRight ? 'bg-accent/40' : 'hover:bg-white/5'}`}>
-            <div
-              className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors ${isResizingRight ? 'bg-accent' : 'bg-white/10 group-hover/resizer:bg-accent/40'}`}
-            />
+            className={`w-1.5 h-full cursor-col-resize z-30 shrink-0 relative transition-all ${
+              isResizingRight ? 'bg-accent/40' : 'hover:bg-white/10'
+            }`}>
+            <div className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px ${isResizingRight ? 'bg-accent' : 'bg-white/10'}`} />
           </div>
         )}
 
-        {/* ── Right Panel: AI Config ── */}
-        <section
-          style={{width: isRightCollapsed ? '48px' : `${rightWidth}px`}}
-          className={`shrink-0 border-l border-white/20 flex flex-col overflow-hidden bg-black ${isResizingRight ? '' : 'transition-[width] duration-500 ease-in-out'} ${isResizingLeft || isResizingRight ? 'select-none' : ''}`}>
-          {/* Sidebar Toggle */}
-          <div className='flex items-center justify-between px-6 h-12 border-b border-white/20 bg-white/3 shadow-sm'>
-            {!isRightCollapsed && (
-              <div className='flex items-center gap-3'>
-                <div className='w-1.5 h-1.5 rounded-full bg-accent' />
-                <span className='text-[9px] font-black text-white/40 uppercase tracking-[0.2em]'>Neural Interface</span>
+        {/* ── Right Pane: Candidate Profile & AI Inspector Drawer ── */}
+        {!isRightCollapsed && (
+          <section
+            style={{ width: `${rightWidth}px` }}
+            className={`shrink-0 border-l border-white/8 flex flex-col overflow-hidden bg-[#0c0c0e] ${
+              isResizingRight ? '' : 'transition-[width] duration-300 ease-in-out'
+            }`}>
+            <div className='flex items-center justify-between px-4 h-10 border-b border-white/8 bg-white/[0.01] shrink-0'>
+              <div className='flex items-center gap-1 bg-white/5 p-0.5 rounded-lg border border-white/5'>
+                <button
+                  onClick={() => setRightPanelTab('profile')}
+                  className={`px-3 py-0.5 rounded-md text-xs font-semibold transition-all ${
+                    rightPanelTab === 'profile' ? 'bg-accent text-black shadow-sm' : 'text-white/40 hover:text-white'
+                  }`}>
+                  Profile
+                </button>
+                <button
+                  onClick={() => setRightPanelTab('ai')}
+                  className={`px-3 py-0.5 rounded-md text-xs font-semibold transition-all ${
+                    rightPanelTab === 'ai' ? 'bg-accent text-black shadow-sm' : 'text-white/40 hover:text-white'
+                  }`}>
+                  AI Settings
+                </button>
               </div>
-            )}
-            <button onClick={() => setIsRightCollapsed(!isRightCollapsed)} className='p-1.5 hover:bg-white/5 rounded-lg transition-colors ml-auto'>
-              <svg className={`w-4 h-4 text-white/20 transition-transform ${isRightCollapsed ? 'rotate-180' : ''}`} fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='3' d='M9 5l7 7-7 7' />
-              </svg>
-            </button>
-          </div>
 
-          {!isRightCollapsed && (
-            <div className='flex-1 overflow-y-auto p-6 custom-scrollbar space-y-12 bg-black'>
-              <GeminiConfigPanel />
-
-              <div className='p-6 rounded-xl bg-white/2 border border-white/5'>
-                <h4 className='text-[10px] font-black text-white/40 uppercase tracking-widest mb-4'>Protocol Heuristics</h4>
-                <p className='text-[11px] text-white/20 leading-relaxed font-medium'>
-                  Optimization focuses on semantic alignment between your profile and target constraints. Master templates remain immutable throughout the process.
-                </p>
-              </div>
+              <button
+                onClick={() => setIsRightCollapsed(true)}
+                className='p-1 hover:bg-white/5 rounded transition-colors text-white/30 hover:text-white'
+                title='Close Inspector'>
+                <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M6 18L18 6M6 6l12 12' />
+                </svg>
+              </button>
             </div>
-          )}
-        </section>
+
+            <div className='flex-1 overflow-y-auto p-5 custom-scrollbar'>
+              {rightPanelTab === 'profile' ? <CandidateProfilePanel /> : <GeminiConfigPanel />}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
 }
+
+export { TransformWorkspace as TailorWorkspace };

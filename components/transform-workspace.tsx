@@ -504,7 +504,7 @@ export function TransformWorkspace() {
           style={{width: isLeftCollapsed ? '48px' : `${leftWidth}px`}}
           className={`shrink-0 border-r border-white/20 flex flex-col overflow-hidden bg-black ${isResizingLeft ? '' : 'transition-[width] duration-500 ease-in-out'}`}>
           {/* Panel header */}
-          <div className='px-6 h-12 border-b border-white/20 bg-white/[0.03] shrink-0 flex items-center justify-between shadow-sm'>
+          <div className='px-6 h-12 border-b border-white/20 bg-white/3 shrink-0 flex items-center justify-between shadow-sm'>
             {!isLeftCollapsed && (
               <div className='flex items-center gap-3'>
                 <div className='w-1.5 h-1.5 rounded-full bg-white/20' />
@@ -532,9 +532,9 @@ export function TransformWorkspace() {
                     placeholder='Entity name…'
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    className='w-full px-4 py-3 bg-white/[0.05] border border-white/[0.07] rounded-xl focus:border-accent/40 focus:bg-white/[0.04] text-base font-semibold tracking-tighter text-white transition-all placeholder:text-white/[0.2] outline-none'
+                    className='w-full px-4 py-3 bg-white/5er border-white/[0.07] rounded-xl focus:border-accent/40 focus:bg-white/4 text-base font-semibold tracking-tighter text-white transition-all placeholder:text-white/20 outline-none'
                   />
-                  <div className='absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity' />
+                  <div className='absolute bottom-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-accent/20 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity' />
                 </div>
               </div>
 
@@ -553,7 +553,7 @@ export function TransformWorkspace() {
                   placeholder='Paste raw data here…'
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
-                  className='w-full min-h-[400px] px-6 py-6 bg-white/[0.05] border border-white/[0.07] rounded-xl focus:border-accent/40 focus:bg-white/[0.04] text-base font-semibold tracking-tighter text-white transition-all placeholder:text-white/[0.2] outline-none'
+                  className='w-full min-h-100 px-6 py-6 bg-white/5 border border-white/[0.07] rounded-xl focus:border-accent/40 focus:bg-white/4 text-base font-semibold tracking-tighter text-white transition-all placeholder:text-white/20 outline-none'
                 />
               </div>
 
@@ -583,7 +583,7 @@ export function TransformWorkspace() {
             onMouseDown={() => setIsResizingLeft(true)}
             className={`w-1.5 h-full cursor-col-resize transition-all z-30 shrink-0 -mx-0.5 group/resizer relative ${isResizingLeft ? 'bg-accent/40' : 'hover:bg-white/5'}`}>
             <div
-              className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] transition-colors ${isResizingLeft ? 'bg-accent' : 'bg-white/10 group-hover/resizer:bg-accent/40'}`}
+              className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors ${isResizingLeft ? 'bg-accent' : 'bg-white/10 group-hover/resizer:bg-accent/40'}`}
             />
           </div>
         )}
@@ -591,7 +591,7 @@ export function TransformWorkspace() {
         {/* ── Center Panel: Preview/Editor ── */}
         <section className='flex-1 flex flex-col overflow-hidden bg-black relative'>
           {/* Tab Header */}
-          <div className='px-6 h-12 border-b border-white/20 bg-white/[0.03] backdrop-blur-xl shrink-0 flex items-center justify-between gap-4 shadow-sm'>
+          <div className='px-6 h-12 border-b border-white/20 bg-white/3 backdrop-blur-xl shrink-0 flex items-center justify-between gap-4 shadow-sm'>
             <div className='flex items-center gap-6'>
               <div className='flex items-center gap-4'>
                 <div className='flex bg-white/5 rounded-xl p-1 gap-1'>
@@ -743,7 +743,7 @@ export function TransformWorkspace() {
             onMouseDown={() => setIsResizingRight(true)}
             className={`w-1.5 h-full cursor-col-resize transition-all z-30 shrink-0 -mx-0.5 group/resizer relative ${isResizingRight ? 'bg-accent/40' : 'hover:bg-white/5'}`}>
             <div
-              className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1px] transition-colors ${isResizingRight ? 'bg-accent' : 'bg-white/10 group-hover/resizer:bg-accent/40'}`}
+              className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors ${isResizingRight ? 'bg-accent' : 'bg-white/10 group-hover/resizer:bg-accent/40'}`}
             />
           </div>
         )}
@@ -753,7 +753,7 @@ export function TransformWorkspace() {
           style={{width: isRightCollapsed ? '48px' : `${rightWidth}px`}}
           className={`shrink-0 border-l border-white/20 flex flex-col overflow-hidden bg-black ${isResizingRight ? '' : 'transition-[width] duration-500 ease-in-out'} ${isResizingLeft || isResizingRight ? 'select-none' : ''}`}>
           {/* Sidebar Toggle */}
-          <div className='flex items-center justify-between px-6 h-12 border-b border-white/20 bg-white/[0.03] shadow-sm'>
+          <div className='flex items-center justify-between px-6 h-12 border-b border-white/20 bg-white/3 shadow-sm'>
             {!isRightCollapsed && (
               <div className='flex items-center gap-3'>
                 <div className='w-1.5 h-1.5 rounded-full bg-accent' />
@@ -771,7 +771,7 @@ export function TransformWorkspace() {
             <div className='flex-1 overflow-y-auto p-6 custom-scrollbar space-y-12 bg-black'>
               <GeminiConfigPanel />
 
-              <div className='p-6 rounded-xl bg-white/[0.02] border border-white/5'>
+              <div className='p-6 rounded-xl bg-white/2 border border-white/5'>
                 <h4 className='text-[10px] font-black text-white/40 uppercase tracking-widest mb-4'>Protocol Heuristics</h4>
                 <p className='text-[11px] text-white/20 leading-relaxed font-medium'>
                   Optimization focuses on semantic alignment between your profile and target constraints. Master templates remain immutable throughout the process.

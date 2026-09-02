@@ -211,7 +211,7 @@ export function Workspace() {
       <main className='flex-1 flex flex-col lg:flex-row overflow-hidden'>
         {/* Left: Editor */}
         <section className='flex-1 flex flex-col overflow-hidden border-b lg:border-b-0 lg:border-r border-white/20 bg-[#121212]'>
-          <div className='flex items-center gap-3 px-6 h-12 border-b border-white/20 bg-white/[0.03] shrink-0 shadow-sm'>
+          <div className='flex items-center gap-3 px-6 h-12 border-b border-white/20 bg-white/3 shrink-0 shadow-sm'>
             <div className='w-1.5 h-1.5 rounded-full bg-accent/40' />
             <span className='text-[9px] font-black uppercase tracking-[0.4em] text-white/20'>Source Editor</span>
           </div>
@@ -245,7 +245,7 @@ export function Workspace() {
 
         {/* Right: PDF Preview */}
         <section className='flex-1 flex flex-col overflow-hidden bg-black'>
-          <div className='flex items-center gap-3 px-6 h-12 border-b border-white/20 bg-white/[0.03] shrink-0 shadow-sm'>
+          <div className='flex items-center gap-3 px-6 h-12 border-b border-white/20 bg-white/3 shrink-0 shadow-sm'>
             <div className='w-1.5 h-1.5 rounded-full bg-white/10' />
             <span className='text-[9px] font-black uppercase tracking-[0.4em] text-white/20'>Live Artifact</span>
             {isLoading && <span className='ml-auto flex items-center gap-2 text-[9px] font-black text-accent uppercase tracking-widest animate-pulse'>Building…</span>}

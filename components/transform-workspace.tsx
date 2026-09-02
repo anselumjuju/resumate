@@ -437,7 +437,7 @@ export function TransformWorkspace() {
             isResizingLeft ? '' : 'transition-[width] duration-300 ease-in-out'
           }`}>
           {/* Header */}
-          <div className='px-4 h-10 border-b border-white/8 bg-white/[0.01] shrink-0 flex items-center justify-between'>
+          <div className='px-4 h-10 border-b border-white/8 bg-white/1 shrink-0 flex items-center justify-between'>
             {!isLeftCollapsed && (
               <span className='text-xs font-semibold text-white/50 uppercase tracking-wider'>
                 Target Job Description
@@ -610,7 +610,7 @@ export function TransformWorkspace() {
         {/* ── Center Pane: Preview / Diff / Editor ── */}
         <section className='flex-1 flex flex-col overflow-hidden bg-[#09090b] relative'>
           {/* Center Header Tabs */}
-          <div className='px-5 h-10 border-b border-white/8 bg-white/[0.01] shrink-0 flex items-center justify-between gap-4'>
+          <div className='px-5 h-10 border-b border-white/8 bg-white/1 shrink-0 flex items-center justify-between gap-4'>
             <div className='flex items-center gap-3'>
               <div className='flex bg-white/5 rounded-lg p-0.5 gap-0.5 border border-white/5'>
                 <button
@@ -768,7 +768,7 @@ export function TransformWorkspace() {
             className={`shrink-0 border-l border-white/8 flex flex-col overflow-hidden bg-[#0c0c0e] ${
               isResizingRight ? '' : 'transition-[width] duration-300 ease-in-out'
             }`}>
-            <div className='flex items-center justify-between px-4 h-10 border-b border-white/8 bg-white/[0.01] shrink-0'>
+            <div className='flex items-center justify-between px-4 h-10 border-b border-white/8 bg-white/1 shrink-0'>
               <div className='flex items-center gap-1 bg-white/5 p-0.5 rounded-lg border border-white/5'>
                 <button
                   onClick={() => setRightPanelTab('profile')}

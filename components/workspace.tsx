@@ -230,7 +230,7 @@ function WorkspaceInner() {
       <main className='flex-1 flex flex-col lg:flex-row overflow-hidden'>
         {/* Left Pane: LaTeX Editor */}
         <section className='flex-1 flex flex-col overflow-hidden border-b lg:border-b-0 lg:border-r border-white/8 bg-[#0e0e11]'>
-          <div className='flex items-center justify-between px-5 h-10 border-b border-white/8 bg-white/[0.01] shrink-0'>
+          <div className='flex items-center justify-between px-5 h-10 border-b border-white/8 bg-white/1 shrink-0'>
             <div className='flex items-center gap-2'>
               <span className='w-1.5 h-1.5 rounded-full bg-accent' />
               <span className='text-xs font-semibold text-white/50 uppercase tracking-wider'>
@@ -272,7 +272,7 @@ function WorkspaceInner() {
 
         {/* Right Pane: Live PDF Preview */}
         <section className='flex-1 flex flex-col overflow-hidden bg-[#09090b]'>
-          <div className='flex items-center justify-between px-5 h-10 border-b border-white/8 bg-white/[0.01] shrink-0'>
+          <div className='flex items-center justify-between px-5 h-10 border-b border-white/8 bg-white/1 shrink-0'>
             <div className='flex items-center gap-2'>
               <span className='w-1.5 h-1.5 rounded-full bg-white/20' />
               <span className='text-xs font-semibold text-white/50 uppercase tracking-wider'>

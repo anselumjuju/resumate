@@ -179,7 +179,7 @@ export function CandidateProfilePanel() {
       </div>
 
       {/* Category Description Banner */}
-      <div className='p-3.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-start gap-3'>
+      <div className='p-3.5 rounded-xl bg-white/2 border border-white/5 flex items-start gap-3'>
         <div className='w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0' />
         <div>
           <p className='text-xs text-white/80 font-medium'>
@@ -277,7 +277,7 @@ export function CandidateProfilePanel() {
             })}
 
             {((activeCategory === 'skills' ? profile.skills : profile.tools) || []).length === 0 && (
-              <div className='w-full py-8 text-center rounded-xl bg-white/[0.01] border border-dashed border-white/10'>
+              <div className='w-full py-8 text-center rounded-xl bg-white/1 border border-dashed border-white/10'>
                 <p className='text-xs text-white/30'>No {currentCategoryMeta.label.toLowerCase()} added yet.</p>
               </div>
             )}
@@ -389,7 +389,7 @@ export function CandidateProfilePanel() {
             ))}
 
             {(profile.certifications || []).length === 0 && (
-              <div className='py-8 text-center rounded-xl bg-white/[0.01] border border-dashed border-white/10'>
+              <div className='py-8 text-center rounded-xl bg-white/1 border border-dashed border-white/10'>
                 <p className='text-xs text-white/30'>No certifications added yet.</p>
               </div>
             )}
@@ -478,7 +478,7 @@ export function CandidateProfilePanel() {
             ))}
 
             {(profile.achievements || []).length === 0 && (
-              <div className='py-8 text-center rounded-xl bg-white/[0.01] border border-dashed border-white/10'>
+              <div className='py-8 text-center rounded-xl bg-white/1 border border-dashed border-white/10'>
                 <p className='text-xs text-white/30'>No achievements added yet.</p>
               </div>
             )}

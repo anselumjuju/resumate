@@ -37,12 +37,15 @@ export function PdfPreview({isLoading = false, error = null, pdfBase64 = null, h
       {/* Loading Overlay */}
       {isLoading && (
         <div className='absolute inset-0 z-10 flex flex-col items-center justify-center bg-black transition-all'>
-           <div className='relative flex items-center justify-center'>
-              <svg className='animate-spin h-8 w-8 text-accent' fill='none' viewBox='0 0 24 24'>
-                <circle className='opacity-10' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='3'></circle>
-                <path className='opacity-90' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
-              </svg>
-           </div>
+          <div className='relative flex items-center justify-center'>
+            <svg className='animate-spin h-8 w-8 text-accent' fill='none' viewBox='0 0 24 24'>
+              <circle className='opacity-10' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='3'></circle>
+              <path
+                className='opacity-90'
+                fill='currentColor'
+                d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
+            </svg>
+          </div>
           <p className='text-[10px] font-black text-white/40 tracking-[0.4em] uppercase mt-6'>Compiling Projection</p>
         </div>
       )}
@@ -56,7 +59,7 @@ export function PdfPreview({isLoading = false, error = null, pdfBase64 = null, h
             </svg>
           </div>
           <h3 className='text-[10px] font-black text-white uppercase tracking-[0.2em] mb-4'>Projection Terminated</h3>
-          <pre className='text-[11px] bg-white/[0.02] border border-white/5 p-6 rounded-[2rem] text-white/60 overflow-auto whitespace-pre-wrap w-full leading-relaxed custom-scrollbar'>
+          <pre className='text-[11px] bg-white/2 border border-white/5 p-6 rounded-4xl text-white/60 overflow-auto whitespace-pre-wrap w-full leading-relaxed custom-scrollbar'>
             {error}
           </pre>
         </div>
@@ -75,7 +78,7 @@ export function PdfPreview({isLoading = false, error = null, pdfBase64 = null, h
       {/* Placeholder State */}
       {!pdfBase64 && !error && !isLoading && (
         <div className='flex-1 flex flex-col items-center justify-center text-white/10'>
-          <div className='p-6 bg-white/[0.02] rounded-[2.5rem] mb-6 border border-white/5'>
+          <div className='p-6 bg-white/2 rounded-[2.5rem] mb-6 border border-white/5'>
             <svg className='h-12 w-12 opacity-30' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
               <path
                 strokeLinecap='round'

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import {useState, useEffect, useMemo} from 'react';
 
 interface DiffPreviewProps {
   original: string;
@@ -26,7 +26,7 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
     const originalLines = original.split('\n');
     const updatedLines = updated.split('\n');
     const detectedHunks: Hunk[] = [];
-    
+
     let currentHunk: Hunk | null = null;
     const maxLines = Math.max(originalLines.length, updatedLines.length);
 
@@ -39,7 +39,7 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
             id: detectedHunks.length,
             original: [],
             updated: [],
-            startIndex: i
+            startIndex: i,
           };
         }
         if (i < originalLines.length) currentHunk.original.push(originalLines[i]);
@@ -57,7 +57,7 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
 
   // Default to all accepted
   useEffect(() => {
-    setAcceptedHunks(new Set(hunks.map(h => h.id)));
+    setAcceptedHunks(new Set(hunks.map((h) => h.id)));
   }, [hunks]);
 
   if (!isVisible) return null;
@@ -85,7 +85,7 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setAcceptedHunks(next);
-    
+
     if (onPreviewUpdate) {
       onPreviewUpdate(getMergedContent(next));
     }
@@ -114,14 +114,12 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
         <div className='flex items-center gap-2'>
           <button
             onClick={onReject}
-            className='px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400/70 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all'
-          >
+            className='px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400/70 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all'>
             Discard All
           </button>
           <button
             onClick={handleFinalApply}
-            className='px-4 py-1.5 bg-[#238636] hover:bg-[#2ea043] text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all shadow-lg active:scale-95'
-          >
+            className='px-4 py-1.5 bg-[#238636] hover:bg-[#2ea043] text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all shadow-lg active:scale-95'>
             Apply Changes
           </button>
         </div>
@@ -132,25 +130,22 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
         {(() => {
           const elements = [];
           let hunkIdx = 0;
-          
+
           for (let i = 0; i < originalLines.length; i++) {
             const hunk = hunks[hunkIdx];
-            
+
             if (hunk && hunk.startIndex === i) {
               const isAccepted = acceptedHunks.has(hunk.id);
-              
+
               elements.push(
-                <div key={`hunk-${hunk.id}`} className='relative group border-y border-white/[0.05] bg-white/[0.01]'>
+                <div key={`hunk-${hunk.id}`} className='relative group border-y border-white/5 bg-white/1'>
                   {/* Hunk Checkbox/Toggle Overlay */}
                   <div className='absolute right-4 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity'>
-                    <button 
+                    <button
                       onClick={() => toggleHunk(hunk.id)}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-tighter transition-all ${
-                        isAccepted 
-                          ? 'bg-accent/20 border-accent/40 text-accent' 
-                          : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'
-                      }`}
-                    >
+                        isAccepted ? 'bg-accent/20 border-accent/40 text-accent' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'
+                      }`}>
                       {isAccepted ? '✓ Accepted' : 'Discarded'}
                     </button>
                   </div>
@@ -160,7 +155,7 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
                     {hunk.original.map((line, li) => (
                       <div key={`orig-${li}`} className='flex hover:bg-red-500/10 transition-colors'>
                         <div className='w-12 shrink-0 flex justify-center text-red-500/30 select-none border-r border-white/5 text-[10px]'>-</div>
-                        <div className='flex-1 px-4 text-red-400 whitespace-pre-wrap break-words italic line-through decoration-red-500/50'>{line || ' '}</div>
+                        <div className='flex-1 px-4 text-red-400 whitespace-pre-wrap wrap-break-wordword italic line-through decoration-red-500/50'>{line || ' '}</div>
                       </div>
                     ))}
                   </div>
@@ -170,20 +165,20 @@ export function DiffPreview({original, updated, onAccept, onReject, onPreviewUpd
                     {hunk.updated.map((line, li) => (
                       <div key={`upd-${li}`} className='flex hover:bg-green-500/10 transition-colors'>
                         <div className='w-12 shrink-0 flex justify-center text-green-500/40 select-none border-r border-white/5 text-[10px]'>+</div>
-                        <div className='flex-1 px-4 text-green-400 whitespace-pre-wrap break-words font-medium'>{line || ' '}</div>
+                        <div className='flex-1 px-4 text-green-400 whitespace-pre-wrap wrap-break-word font-medium'>{line || ' '}</div>
                       </div>
                     ))}
                   </div>
-                </div>
+                </div>,
               );
               i += hunk.original.length - 1;
               hunkIdx++;
             } else {
               elements.push(
-                <div key={`line-${i}`} className='flex hover:bg-white/[0.02] transition-colors group opacity-40 hover:opacity-100'>
+                <div key={`line-${i}`} className='flex hover:bg-white/2 transition-colors group opacity-40 hover:opacity-100'>
                   <div className='w-12 shrink-0 flex justify-center text-white/10 select-none border-r border-white/5 text-[10px]'>{i + 1}</div>
-                  <div className='flex-1 px-4 text-white/40 whitespace-pre-wrap break-words'>{originalLines[i] || ' '}</div>
-                </div>
+                  <div className='flex-1 px-4 text-white/40 whitespace-pre-wrap wrap-break-word'>{originalLines[i] || ' '}</div>
+                </div>,
               );
             }
           }

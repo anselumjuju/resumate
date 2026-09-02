@@ -255,7 +255,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
 
       {/* Status Footer */}
       <div className='p-3 border-t border-white/8 shrink-0'>
-        <div className='p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-2'>
+        <div className='p-3 rounded-xl bg-white/2 border border-white/5 space-y-2'>
           <div className='flex items-center justify-between text-[10px]'>
             <span className='text-white/40'>Profile Guard</span>
             <span className={totalProfileItems > 0 ? 'text-green-400 font-medium' : 'text-amber-400/80'}>

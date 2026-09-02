@@ -9,7 +9,7 @@ import {optimizeResumeAction} from '@/actions/optimize-resume';
 import {DiffPreview} from '@/components/editor/diff-preview';
 import {selectGeminiConfig} from '@/lib/ai-selector';
 import {LatexEditor} from '@/components/editor/latex-editor';
-import {DEFAULT_COVER_LETTER, DEFAULT_RESUME} from '@/constants/templates';
+import {DEFAULT_COVER_LETTER, DEFAULT_RESUME} from '@/constants/template';
 
 const stopWords = new Set([
   'and',

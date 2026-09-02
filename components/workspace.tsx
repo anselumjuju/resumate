@@ -5,8 +5,7 @@ import {LatexEditor} from '@/components/editor/latex-editor';
 import {PdfPreview} from '@/components/preview/pdf-preview';
 import {compilePdf} from '@/actions/compile-pdf';
 import {useGeminiConfig} from '@/hooks/use-gemini-config';
-
-import {DEFAULT_RESUME, DEFAULT_COVER_LETTER} from '@/constants/templates';
+import {DEFAULT_RESUME, DEFAULT_COVER_LETTER} from '@/constants/template';
 
 export function Workspace() {
   const {setIsDirty} = useGeminiConfig();

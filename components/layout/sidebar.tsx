@@ -24,9 +24,7 @@ function SidebarNavItems({
 
   const totalProfileItems =
     (profile.skills?.length || 0) +
-    (profile.tools?.length || 0) +
-    (profile.certifications?.length || 0) +
-    (profile.achievements?.length || 0);
+    (profile.tools?.length || 0);
 
   const hasApiKey = keys.length > 0;
 
@@ -213,9 +211,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
 
   const totalProfileItems =
     (profile.skills?.length || 0) +
-    (profile.tools?.length || 0) +
-    (profile.certifications?.length || 0) +
-    (profile.achievements?.length || 0);
+    (profile.tools?.length || 0);
 
   const hasApiKey = keys.length > 0;
 

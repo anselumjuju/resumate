@@ -179,15 +179,27 @@ export async function optimizeResumeAction(
       ${guardrailsText}
 
       STRICT RULES FOR RESUME OPTIMIZATION:
-      - ONLY modify the content within the following sections:
-        1. Summary (or equivalent profile/objective section)
-        2. Skills (or equivalent technical/core competencies section)
-        3. Education: ONLY the specific "Courses", "Awards", or "Honors" sub-lists (keep degree, university, GPA intact).
-        4. Experience & Projects: ONLY the bullet points (the content inside \\itemize or equivalents).
-      - NEVER alter: Personal names, contact links/info, degree names, university names, company names, dates, or formal job titles.
-      - Maintain the exact LaTeX structure, commands, environments, and formatting with 100% syntactic precision.
-      - Write measurable impact bullet points using natural English without corporate buzzword stuffing or robotic tone.
-      - Return ONLY the updated LaTeX body content. Do NOT include the preamble or the \\begin/\\end document tags.
+      1. PRESERVE ALL EXISTING SECTIONS & ENTRIES:
+         - NEVER drop, delete, or omit existing sections (Projects, Certifications, Education, Experience, Awards, etc.).
+         - All existing projects, jobs, credentials, and sections in the source resume MUST remain in the optimized output.
+
+      2. SKILLS INTEGRITY (NO DELETIONS & NO VAGUE SKILLS):
+         - Do NOT remove or wipe out the candidate's existing skills.
+         - Do NOT add vague, soft-skill, or generic buzzwords (e.g., "Problem Solver", "Team Player", "Communication", "Critical Thinking", "Fast Learner").
+         - Retain existing technical skills, reorder them for relevance, and add matching concrete verified technical skills/tools from the Candidate Profile.
+
+      3. ALLOWED MODIFICATION SCOPE (ONLY MODIFY THESE 3 PARTS):
+         - Professional Summary / Profile / Objective: Tailor value proposition to align with the target role.
+         - Skills & Tools: Reorder, emphasize, and augment with relevant verified technical proficiencies.
+         - Project and Experience summaries / bullet points: Refine descriptions and accomplishments to highlight relevant technologies and impact matching the JD.
+
+      4. UNALTERABLE FACTS:
+         - NEVER alter personal names, contact info/links, degree names, university names, GPA, company names, dates, or formal job titles.
+         - NEVER fabricate fake experience, fake metrics, or unsupported technologies.
+
+      5. LATEX SYNTAX PRECISION:
+         - Maintain the exact LaTeX structure, commands, environments, and formatting with 100% syntactic precision.
+         - Return ONLY the updated LaTeX body content. Do NOT include the preamble or the \\begin/\\end document tags.
 
       STRICT RULES FOR COVER LETTER:
       ${coverLetterTemplate ? '- I have provided a Cover Letter template body. REWRITE the body content inside while preserving the overall LaTeX structure and contact information.' : '- Draft a brief, compelling cover letter tailored to the JD. Return as plain text content.'}

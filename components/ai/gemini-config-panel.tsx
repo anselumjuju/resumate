@@ -100,7 +100,7 @@ export function GeminiConfigPanel() {
           <form onSubmit={handleAddKey} className='p-4 rounded-xl bg-[#121215] border border-white/8 space-y-3'>
             <span className='text-xs font-bold text-white uppercase tracking-wider block'>Add Gemini API Key</span>
 
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-2.5'>
+            <div className='grid grid-cols-1 gap-2.5 '>
               <input
                 type='text'
                 placeholder='Label (e.g. Personal Gemini Key)…'

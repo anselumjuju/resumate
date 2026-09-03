@@ -30,9 +30,7 @@ export function Header() {
 
   const totalProfileItems =
     (profile.skills?.length || 0) +
-    (profile.tools?.length || 0) +
-    (profile.certifications?.length || 0) +
-    (profile.achievements?.length || 0);
+    (profile.tools?.length || 0);
 
   return (
     <>

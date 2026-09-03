@@ -18,6 +18,7 @@ export function TransformWorkspace() {
   const { profile } = useCandidateProfile();
 
   const [companyName, setCompanyName] = useState('');
+  const [roleName, setRoleName] = useState('');
   const [jobDescription, setJobDescription] = useState('');
 
   // Master Templates
@@ -97,8 +98,10 @@ export function TransformWorkspace() {
     setDraftCoverLetter(defaultCL);
 
     const sessionCompany = sessionStorage.getItem('target_company');
+    const sessionRole = sessionStorage.getItem('target_role');
     const sessionJd = sessionStorage.getItem('target_jd');
     if (sessionCompany) setCompanyName(sessionCompany);
+    if (sessionRole) setRoleName(sessionRole);
     if (sessionJd) setJobDescription(sessionJd);
 
     setIsHydrated(true);
@@ -111,9 +114,10 @@ export function TransformWorkspace() {
       draftResume !== baseResume ||
       draftCoverLetter !== baseCoverLetter ||
       companyName !== '' ||
+      roleName !== '' ||
       jobDescription !== '';
     setIsDirty(hasUnsavedChanges);
-  }, [draftResume, draftCoverLetter, baseResume, baseCoverLetter, companyName, jobDescription, isHydrated, setIsDirty]);
+  }, [draftResume, draftCoverLetter, baseResume, baseCoverLetter, companyName, roleName, jobDescription, isHydrated, setIsDirty]);
 
   // Debounced Live PDF Compilation
   useEffect(() => {
@@ -150,15 +154,16 @@ export function TransformWorkspace() {
   }, [isHydrated, draftResume, draftCoverLetter, activeTab]);
 
   const handleSaveJob = () => {
-    if (!companyName.trim() && !jobDescription.trim()) return;
+    if (!companyName.trim() && !roleName.trim() && !jobDescription.trim()) return;
 
     const saved = localStorage.getItem('job_history');
     const history = saved ? JSON.parse(saved) : [];
 
     const newJob = {
       id: crypto.randomUUID(),
-      companyName,
-      jobDescription,
+      companyName: companyName.trim(),
+      roleName: roleName.trim(),
+      jobDescription: jobDescription.trim(),
       timestamp: Date.now(),
     };
 
@@ -169,15 +174,10 @@ export function TransformWorkspace() {
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const sanitizedCompany =
-        companyName.trim()
-          ? companyName
-              .trim()
-              .replace(/[^a-z0-9]/gi, '-')
-              .toLowerCase()
-          : 'tailored';
+      const targetTag = [companyName.trim(), roleName.trim()].filter(Boolean).join('-') || 'tailored';
+      const sanitizedTag = targetTag.replace(/[^a-z0-9]/gi, '-').toLowerCase();
 
-      const filePrefix = `resume-${sanitizedCompany}`;
+      const filePrefix = `resume-${sanitizedTag}`;
 
       if (activeTab === 'resume') {
         let pdfData = resumePdfBase64;
@@ -454,25 +454,41 @@ export function TransformWorkspace() {
           </div>
 
           {!isLeftCollapsed && (
-            <div className='flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5'>
-              {/* Target Company */}
-              <div className='space-y-1.5'>
-                <label htmlFor='companyName' className='block text-xs font-semibold text-white/60'>
-                  Company / Role Name
-                </label>
-                <input
-                  id='companyName'
-                  type='text'
-                  placeholder='e.g. Stripe, Senior Frontend Engineer…'
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className='w-full px-3.5 py-2 bg-white/5 border border-white/10 rounded-xl focus:border-accent/40 focus:bg-white/10 text-xs font-medium text-white transition-all placeholder:text-white/20 outline-none'
-                />
+            <div className='flex-1 flex flex-col p-4 sm:p-5 overflow-y-auto custom-scrollbar gap-4'>
+              {/* Target Company & Role Inputs */}
+              <div className='space-y-3 shrink-0'>
+                <div className='space-y-1.5'>
+                  <label htmlFor='companyName' className='block text-xs font-semibold text-white/60'>
+                    Company Name
+                  </label>
+                  <input
+                    id='companyName'
+                    type='text'
+                    placeholder='e.g. Stripe'
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className='w-full px-3.5 py-2 bg-white/5 border border-white/10 rounded-xl focus:border-accent/40 focus:bg-white/10 text-xs font-medium text-white transition-all placeholder:text-white/20 outline-none'
+                  />
+                </div>
+
+                <div className='space-y-1.5'>
+                  <label htmlFor='roleName' className='block text-xs font-semibold text-white/60'>
+                    Job Role / Title
+                  </label>
+                  <input
+                    id='roleName'
+                    type='text'
+                    placeholder='e.g. Senior Frontend Engineer'
+                    value={roleName}
+                    onChange={(e) => setRoleName(e.target.value)}
+                    className='w-full px-3.5 py-2 bg-white/5 border border-white/10 rounded-xl focus:border-accent/40 focus:bg-white/10 text-xs font-medium text-white transition-all placeholder:text-white/20 outline-none'
+                  />
+                </div>
               </div>
 
-              {/* Job Description Textarea */}
-              <div className='space-y-1.5'>
-                <div className='flex items-center justify-between'>
+              {/* Job Description Textarea (Expands to fill all remaining height) */}
+              <div className='flex-1 flex flex-col min-h-[160px] space-y-1.5'>
+                <div className='flex items-center justify-between shrink-0'>
                   <label htmlFor='jobDescription' className='block text-xs font-semibold text-white/60'>
                     Job Description
                   </label>
@@ -490,8 +506,7 @@ export function TransformWorkspace() {
                     setJobDescription(e.target.value);
                     if (analysisResult) setAnalysisResult(null);
                   }}
-                  rows={8}
-                  className='w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:border-accent/40 focus:bg-white/10 text-xs font-mono text-white/90 transition-all placeholder:text-white/20 outline-none resize-y custom-scrollbar leading-relaxed'
+                  className='flex-1 w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl focus:border-accent/40 focus:bg-white/10 text-xs font-mono text-white/90 transition-all placeholder:text-white/20 outline-none resize-none custom-scrollbar leading-relaxed min-h-[140px]'
                 />
               </div>
 

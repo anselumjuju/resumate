@@ -9,6 +9,7 @@ import { useGeminiConfig } from '@/hooks/use-gemini-config';
 interface SavedJob {
   id: string;
   companyName: string;
+  roleName?: string;
   jobDescription: string;
   timestamp: number;
 }
@@ -34,6 +35,7 @@ export default function Home() {
 
   const handleLoadJob = (job: SavedJob) => {
     sessionStorage.setItem('target_company', job.companyName);
+    sessionStorage.setItem('target_role', job.roleName || '');
     sessionStorage.setItem('target_jd', job.jobDescription);
     router.push('/workspace');
   };
@@ -46,9 +48,7 @@ export default function Home() {
 
   const totalProfileItems =
     (profile.skills?.length || 0) +
-    (profile.tools?.length || 0) +
-    (profile.certifications?.length || 0) +
-    (profile.achievements?.length || 0);
+    (profile.tools?.length || 0);
 
   const hasApiKey = keys.length > 0;
 
@@ -223,7 +223,7 @@ export default function Home() {
                   <div className='space-y-1 min-w-0'>
                     <div className='flex items-center gap-3'>
                       <h4 className='text-sm font-bold text-white capitalize truncate'>
-                        {job.companyName || 'Untitled Target'}
+                        {job.companyName || 'Target Job'} {job.roleName ? `• ${job.roleName}` : ''}
                       </h4>
                       <span className='px-2 py-0.5 rounded text-[10px] text-white/40 bg-white/5 border border-white/5'>
                         {new Date(job.timestamp).toLocaleDateString()}

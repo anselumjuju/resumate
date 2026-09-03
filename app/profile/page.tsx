@@ -3,7 +3,7 @@ import { CandidateProfilePanel } from '@/components/profile/candidate-profile-pa
 
 export const metadata: Metadata = {
   title: 'Candidate Profile | Resumate',
-  description: 'Manage verified skills, tools, certifications, and achievements for AI guardrails.',
+  description: 'Manage verified skills and tools for AI guardrails.',
 };
 
 export default function ProfilePage() {

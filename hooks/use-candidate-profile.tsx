@@ -1,28 +1,16 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import {
-  CandidateProfile,
-  ProfileCategory,
-  CertificationItem,
-  AchievementItem,
-  DEFAULT_CANDIDATE_PROFILE,
-} from '@/types/profile';
+import { CandidateProfile, ProfileCategory, DEFAULT_CANDIDATE_PROFILE } from '@/types/profile';
 
 const STORAGE_KEY = 'candidate_profile';
 
 interface CandidateProfileContextType {
   profile: CandidateProfile;
   isLoaded: boolean;
-  addSimpleItem: (category: 'skills' | 'tools', item: string) => void;
-  removeSimpleItem: (category: 'skills' | 'tools', index: number) => void;
-  editSimpleItem: (category: 'skills' | 'tools', index: number, newItem: string) => void;
-  addCertification: (item: CertificationItem) => void;
-  removeCertification: (index: number) => void;
-  editCertification: (index: number, item: CertificationItem) => void;
-  addAchievement: (item: AchievementItem) => void;
-  removeAchievement: (index: number) => void;
-  editAchievement: (index: number, item: AchievementItem) => void;
+  addSimpleItem: (category: ProfileCategory, item: string) => void;
+  removeSimpleItem: (category: ProfileCategory, index: number) => void;
+  editSimpleItem: (category: ProfileCategory, index: number, newItem: string) => void;
   removeItem: (category: ProfileCategory, index: number) => void;
   resetProfile: () => void;
 }
@@ -38,33 +26,9 @@ export function CandidateProfileProvider({ children }: { children: ReactNode }) 
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-
-        const normalizeCert = (item: any): CertificationItem => {
-          if (typeof item === 'string') {
-            return { title: item, description: '', link: '' };
-          }
-          return {
-            title: item?.title || '',
-            description: item?.description || '',
-            link: item?.link || '',
-          };
-        };
-
-        const normalizeAchievement = (item: any): AchievementItem => {
-          if (typeof item === 'string') {
-            return { title: item, description: '' };
-          }
-          return {
-            title: item?.title || '',
-            description: item?.description || '',
-          };
-        };
-
         setProfile({
-          skills: Array.isArray(parsed.skills) ? parsed.skills.filter((s: any) => typeof s === 'string') : [],
-          tools: Array.isArray(parsed.tools) ? parsed.tools.filter((t: any) => typeof t === 'string') : [],
-          certifications: Array.isArray(parsed.certifications) ? parsed.certifications.map(normalizeCert) : [],
-          achievements: Array.isArray(parsed.achievements) ? parsed.achievements.map(normalizeAchievement) : [],
+          skills: Array.isArray(parsed.skills) ? parsed.skills.filter((s: any) => typeof s === 'string') : DEFAULT_CANDIDATE_PROFILE.skills,
+          tools: Array.isArray(parsed.tools) ? parsed.tools.filter((t: any) => typeof t === 'string') : DEFAULT_CANDIDATE_PROFILE.tools,
         });
       } catch (e) {
         console.error('Failed to parse candidate profile from localStorage', e);
@@ -80,7 +44,7 @@ export function CandidateProfileProvider({ children }: { children: ReactNode }) 
     }
   }, [profile, isLoaded]);
 
-  const addSimpleItem = useCallback((category: 'skills' | 'tools', item: string) => {
+  const addSimpleItem = useCallback((category: ProfileCategory, item: string) => {
     const trimmed = item.trim();
     if (!trimmed) return;
 
@@ -94,14 +58,14 @@ export function CandidateProfileProvider({ children }: { children: ReactNode }) 
     });
   }, []);
 
-  const removeSimpleItem = useCallback((category: 'skills' | 'tools', index: number) => {
+  const removeSimpleItem = useCallback((category: ProfileCategory, index: number) => {
     setProfile((prev) => ({
       ...prev,
       [category]: (prev[category] || []).filter((_, i) => i !== index),
     }));
   }, []);
 
-  const editSimpleItem = useCallback((category: 'skills' | 'tools', index: number, newItem: string) => {
+  const editSimpleItem = useCallback((category: ProfileCategory, index: number, newItem: string) => {
     const trimmed = newItem.trim();
     if (!trimmed) return;
 
@@ -117,82 +81,10 @@ export function CandidateProfileProvider({ children }: { children: ReactNode }) 
     });
   }, []);
 
-  const addCertification = useCallback((item: CertificationItem) => {
-    if (!item.title.trim()) return;
-    setProfile((prev) => ({
-      ...prev,
-      certifications: [
-        ...(prev.certifications || []),
-        {
-          title: item.title.trim(),
-          description: item.description.trim(),
-          link: item.link?.trim() || undefined,
-        },
-      ],
-    }));
-  }, []);
-
-  const removeCertification = useCallback((index: number) => {
-    setProfile((prev) => ({
-      ...prev,
-      certifications: (prev.certifications || []).filter((_, i) => i !== index),
-    }));
-  }, []);
-
-  const editCertification = useCallback((index: number, item: CertificationItem) => {
-    if (!item.title.trim()) return;
-    setProfile((prev) => {
-      const current = [...(prev.certifications || [])];
-      if (index >= 0 && index < current.length) {
-        current[index] = {
-          title: item.title.trim(),
-          description: item.description.trim(),
-          link: item.link?.trim() || undefined,
-        };
-      }
-      return { ...prev, certifications: current };
-    });
-  }, []);
-
-  const addAchievement = useCallback((item: AchievementItem) => {
-    if (!item.title.trim()) return;
-    setProfile((prev) => ({
-      ...prev,
-      achievements: [
-        ...(prev.achievements || []),
-        {
-          title: item.title.trim(),
-          description: item.description.trim(),
-        },
-      ],
-    }));
-  }, []);
-
-  const removeAchievement = useCallback((index: number) => {
-    setProfile((prev) => ({
-      ...prev,
-      achievements: (prev.achievements || []).filter((_, i) => i !== index),
-    }));
-  }, []);
-
-  const editAchievement = useCallback((index: number, item: AchievementItem) => {
-    if (!item.title.trim()) return;
-    setProfile((prev) => {
-      const current = [...(prev.achievements || [])];
-      if (index >= 0 && index < current.length) {
-        current[index] = {
-          title: item.title.trim(),
-          description: item.description.trim(),
-        };
-      }
-      return { ...prev, achievements: current };
-    });
-  }, []);
-
   const removeItem = useCallback((category: ProfileCategory, index: number) => {
     setProfile((prev) => ({
       ...prev,
-      [category]: (prev[category] as any[]).filter((_, i) => i !== index),
+      [category]: (prev[category] || []).filter((_, i) => i !== index),
     }));
   }, []);
 
@@ -208,12 +100,6 @@ export function CandidateProfileProvider({ children }: { children: ReactNode }) 
         addSimpleItem,
         removeSimpleItem,
         editSimpleItem,
-        addCertification,
-        removeCertification,
-        editCertification,
-        addAchievement,
-        removeAchievement,
-        editAchievement,
         removeItem,
         resetProfile,
       }}>

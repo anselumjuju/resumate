@@ -35,10 +35,10 @@ const STEPS = [
     label: 'Candidate Profile',
     title: 'Define your verified qualifications',
     description:
-      'Your Candidate Profile is the ground truth Resumate uses to guard AI output. The AI will never invent skills, certifications, or experience that are not listed here.',
+      'Your Candidate Profile is the ground truth Resumate uses to guard AI output. The AI will never invent skills, tools, or qualifications that are not listed here.',
     action: {href: '/profile', label: 'Open Profile →'},
     detail: [
-      '🛡️ Skills, tools, certifications, and achievements',
+      '🛡️ Skills and developer tools ground truth',
       '🚫 AI is forbidden from fabricating missing qualifications',
       '🔍 Used for real-time job fit analysis before tailoring',
     ],

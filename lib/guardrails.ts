@@ -49,11 +49,7 @@ export const PROHIBITED_INFERENCES = [
 export function formatCandidateProfileForPrompt(profile?: CandidateProfile): string {
   if (!profile) return 'No Candidate Profile provided.';
 
-  const hasAny =
-    (profile.skills?.length || 0) > 0 ||
-    (profile.tools?.length || 0) > 0 ||
-    (profile.certifications?.length || 0) > 0 ||
-    (profile.achievements?.length || 0) > 0;
+  const hasAny = (profile.skills?.length || 0) > 0 || (profile.tools?.length || 0) > 0;
 
   if (!hasAny) {
     return 'Candidate Profile is currently empty. Rely strictly on existing Resume content.';
@@ -67,21 +63,6 @@ export function formatCandidateProfileForPrompt(profile?: CandidateProfile): str
   if (profile.tools?.length) {
     sections.push(`- Verified Tools & Platforms: ${profile.tools.join(', ')}`);
   }
-  if (profile.certifications?.length) {
-    const certsFormatted = profile.certifications.map((c) => {
-      const parts = [c.title];
-      if (c.description) parts.push(`(${c.description})`);
-      if (c.link) parts.push(`[Credential: ${c.link}]`);
-      return parts.join(' ');
-    });
-    sections.push(`- Verified Certifications:\n  * ${certsFormatted.join('\n  * ')}`);
-  }
-  if (profile.achievements?.length) {
-    const achFormatted = profile.achievements.map((a) => {
-      return a.description ? `${a.title} - ${a.description}` : a.title;
-    });
-    sections.push(`- Verified Key Achievements:\n  * ${achFormatted.join('\n  * ')}`);
-  }
 
   return sections.join('\n');
 }
@@ -94,7 +75,7 @@ export function getGuardrailsPrompt(): string {
 --- AI GUARDRAILS & INTEGRITY CONSTRAINTS (STRICT ENFORCEMENT) ---
 1. SOURCES OF TRUTH:
    - Primary Source: The existing Resume LaTeX content.
-   - Secondary Source: The Candidate Profile provided below.
+   - Secondary Source: The Candidate Profile provided below (Verified Skills and Tools).
    - You MUST NEVER invent skills, technologies, frameworks, certifications, employer names, or qualifications not substantiated by either source.
 
 2. UNSUPPORTED TECHNOLOGIES IN JOB DESCRIPTION:
@@ -106,17 +87,26 @@ export function getGuardrailsPrompt(): string {
    - ALLOWED SAFE INFERENCES: You may make safe, direct inferences where knowing technology A directly implies foundational knowledge of B (e.g., GitHub -> Git, Next.js -> React/JavaScript, PostgreSQL -> SQL, TypeScript -> JavaScript).
    - STRICTLY PROHIBITED INFERENCES: You must NEVER assume knowledge of adjacent frameworks or ecosystem tools (e.g., Java DOES NOT imply Spring Boot; Python DOES NOT imply Django; JavaScript DOES NOT imply Node.js; React DOES NOT imply React Native; AWS DOES NOT imply Kubernetes).
 
-4. EXPERIENCE & BULLET POINTS:
-   - You may rephrase, reorganize, and highlight relevant accomplishments to align with the JD keywords.
-   - You may use candidate achievements from the Profile to enrich bullet points.
-   - You MUST NOT fabricate job responsibilities, fake projects, or fake metrics.
-   - You MUST NOT alter dates, employer names, education degrees, or universities.
+4. PRESERVE ALL EXISTING RESUME SECTIONS:
+   - You MUST NEVER drop, delete, or omit existing sections (e.g., Projects, Certifications, Education, Work Experience, Awards). Every section and entry present in the original resume must remain in the output.
+
+5. SKILLS INTEGRITY & NO VAGUE FILLERS:
+   - Do NOT wipe out or remove existing skills from the resume.
+   - Do NOT add vague, soft-skill, or generic filler keywords (e.g., "Problem Solving", "Team Player", "Communication", "Fast Learner", "Leadership", "Hard Working").
+   - ONLY add concrete, verified technical skills, frameworks, languages, and developer tools from the Candidate Profile that are relevant to the target Job Description.
+
+6. ALLOWED MODIFICATION SCOPE (ONLY THESE 3 AREAS):
+   - Summary / Objective: Align summary statement with target job requirements.
+   - Skills & Tools: Preserve existing skills, reorder for relevance, and add matching verified technical skills.
+   - Project & Experience summaries / bullet points: Refine technical phrasing and highlight relevant accomplishments that match JD keywords without fabricating fake facts.
+
+7. STRICTLY FORBIDDEN:
+   - NEVER modify company/employer names, formal job titles, employment dates, university names, degree names, GPA, candidate name, or contact links.
 `;
 }
 
 /**
- * Future Match Analysis Helper Model.
- * Structure that categorizes skills from the JD against the candidate profile and resume.
+ * Skill alignment structure.
  */
 export interface SkillMatchAnalysis {
   matchingSkills: string[];
@@ -135,13 +125,11 @@ export function analyzeSkillMatch(
 ): SkillMatchAnalysis {
   const normalize = (s: string) => s.toLowerCase().trim();
 
-  // Extract known items from profile and resume
+  // Extract known items from profile
   const knownSet = new Set<string>();
   [
     ...(profile.skills || []),
     ...(profile.tools || []),
-    ...(profile.certifications || []).flatMap((c) => [c.title, c.description]),
-    ...(profile.achievements || []).flatMap((a) => [a.title, a.description]),
   ]
     .filter(Boolean)
     .forEach((item) => knownSet.add(normalize(item)));

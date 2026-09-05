@@ -1,93 +1,159 @@
-# Resumate
+# Resumate ⚡
 
-Resumate is an AI-powered LaTeX resume and cover letter optimization tool that helps tailor applications based on specific job descriptions using Google's Gemini AI.
+**Resumate** is a local-first, privacy-focused job application workspace designed to tailor LaTeX resumes and generate targeted cover letters using Google's Gemini API.
 
-It allows users to maintain master LaTeX templates and rewrite selected sections without breaking the existing LaTeX structure.
+It enables you to maintain your master LaTeX resume templates and intelligently tailor the summary, technical skills, and experience/project descriptions to match any Job Description without breaking LaTeX syntax, inventing fake qualifications, or dropping existing sections.
 
-## Features
+---
 
-- Edit and manage LaTeX resume templates
-- AI-powered resume optimization using Gemini
-- AI-generated cover letters based on job descriptions
-- Job Description based rewriting
-- Unified diff viewer to review AI changes
-- Live PDF preview
-- Local-first storage using browser localStorage
-- Support for multiple Gemini models
+## 🚀 Features
 
-## Tech Stack
+- **Ground Truth Guardrails**: Maintain your verified skills and tools in your Candidate Profile. The AI is strictly prevented from fabricating credentials or technologies you don't possess.
+- **Job Alignment Analysis**: Instantly compare target job descriptions against your verified profile to discover verified matches, safe ecosystem inferences, and guarded unsupported skills.
+- **Precision LaTeX Tailoring**: AI modifies only targeted sections (summary, skills, project/experience summaries) while preserving 100% of your LaTeX commands, formatting, and structural integrity.
+- **Side-by-Side Diff Review**: Inspect proposed AI changes hunk-by-hunk in a Monaco diff editor. Accept or discard changes with a single click.
+- **Real-Time PDF Compilation**: Integrated live PDF preview powered by your local LaTeX engine (`pdflatex`).
+- **Local-First & Secure**: No backend database. All API keys and resume drafts are stored locally in your browser with automatic 30-day expiration policies and Dynamic Model Redundancy.
 
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- Monaco Editor
-- Google Gemini SDK
-- LaTeX
+---
 
-## MiKTeX Setup
+## 🛠️ Tech Stack
 
-Resumate requires MiKTeX to compile LaTeX resumes and cover letters into PDFs.
+- **Framework**: [Next.js](https://nextjs.org/) (App Router & Server Actions)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **UI & Styling**: [React](https://react.dev/), [Tailwind CSS](https://tailwindcss.com/)
+- **Code Editor**: [Monaco Editor](https://microsoft.github.io/monaco-editor/)
+- **AI Engine**: [Google Gen AI SDK](https://github.com/google-gemini/generative-ai-js) (Gemini 2.5 Flash / Pro)
+- **Document Compiler**: [MiKTeX](https://miktex.org/) (`pdflatex`)
 
-Download and install MiKTeX:
+---
 
-https://miktex.org/download
+## 📦 Installation & Setup
 
-During installation, make sure MiKTeX is added to your system PATH.
+### 1. Prerequisites (LaTeX Engine)
 
-## Getting Started
+Resumate compiles LaTeX files directly into PDFs locally on your machine using `pdflatex`.
 
-Install dependencies:
+1. Download and install **MiKTeX**: [https://miktex.org/download](https://miktex.org/download)
+2. During setup, ensure that MiKTeX is added to your system **`PATH`**.
+3. Verify installation in your terminal:
+   ```bash
+   pdflatex --version
+   ```
+
+---
+
+### 2. Clone & Install Dependencies
+
+Clone the repository and install dependencies using your preferred package manager:
 
 ```bash
+git clone https://github.com/anselumjuju/resumate.git
+cd resumate
+```
+
+```bash
+# Using pnpm (Recommended)
 pnpm install
+
+# Using npm
+npm install
+
+# Using yarn
+yarn install
 ```
 
-Run the development server:
+---
+
+### 3. Run Development Server
 
 ```bash
+# Using pnpm
 pnpm dev
+
+# Using npm
+npm run dev
+
+# Using yarn
+yarn dev
 ```
 
-Open:
+Open your browser and navigate to [http://localhost:3000](http://localhost:3000).
 
-```txt
-http://localhost:3000
+---
+
+## 🔄 User Workflow
+
+```
+Add Gemini Key ➔ Set Candidate Profile ➔ Edit Master LaTeX ➔ Tailor to Job ➔ Review Diff ➔ Export PDF
 ```
 
-## Gemini API Key
+### Step 1: Add Google Gemini API Key
 
-Add your Gemini API key in the settings panel to enable AI transformations.
+Resumate stores your Gemini API key strictly in your browser's local storage with an automated 30-day default expiration policy.
 
-The API key is stored locally in the browser and is never sent to any external backend server.
+1. Get a free API key from [Google AI Studio](https://aistudio.google.com/).
+2. Navigate to **Settings** (`/settings`) in Resumate.
+3. Paste your key, select your preferred model (e.g. _Gemini 2.5 Flash_), and enable **Dynamic Redundancy** for automatic rate-limit failover.
 
-## How to Get a Gemini API Key
+---
 
-1. Go to Google AI Studio:
+### Step 2: Complete Your Candidate Profile
 
-   https://aistudio.google.com/
+Define your verified ground truth skills and tools under **Profile** (`/profile`). Resumate uses this list as an absolute guardrail to ensure the AI never claims skills, libraries, or tools you haven't approved.
 
-2. Sign in with your Google account.
+<p align="center">
+  <img src="public/images/profile.png" alt="Candidate Profile Guardrails" width="850" />
+</p>
 
-3. Click on: `Get API Key`
+---
 
-4. Create a new API key or use an existing Google Cloud project.
+### Step 3: Manage Master LaTeX Resume & Cover Letter
 
-5. Copy the generated API key.
+Edit your base LaTeX resume or choose from built-in standard templates in the **Resume** workspace (`/editor?tab=resume`). Changes compile automatically into live PDF previews with debounced rendering.
 
-6. Open Resumate and paste the API key into the settings panel.
+<p align="center">
+  <img src="public/images/editor.png" alt="LaTeX Editor and Live PDF Preview" width="850" />
+</p>
 
-## Notes
+---
 
-- The API key is stored locally in your browser using localStorage.
-- Resumate does not use a backend server to store or proxy API requests.
-- You can revoke or regenerate your API key anytime from Google AI Studio.
+### Step 4: Tailor to Job & Analyze Alignment
 
-## Workflow
+Navigate to **Tailor to Job** (`/workspace`):
 
-1. Create or edit your LaTeX resume template
-2. Paste a Job Description
-3. Let Gemini optimize your resume content
-4. Generate a matching cover letter
-5. Review changes in the diff viewer
-6. Export the final PDF
+1. Enter the **Company Name** and **Job Role / Title**.
+2. Paste the target **Job Description** into the full-height input pane.
+3. Click **Analyze Match** to run pre-optimization analysis. Resumate evaluates:
+   - **Verified Matches**: Direct skill intersections.
+   - **Safe Inferences**: Logical relationships (e.g., `GitHub` $\rightarrow$ `Git`, `Next.js` $\rightarrow$ `React`).
+   - **Guarded Technologies**: Unsupported JD requirements the AI is forbidden from fabricating.
+4. Click **Tailor Resume** to generate tailored resume sections and matching cover letter drafts.
+
+<p align="center">
+  <img src="public/images/tailor-resume.png" alt="Job Match Alignment Analysis and Tailoring" width="850" />
+</p>
+
+---
+
+### Step 5: Review Changes & Export PDF
+
+Review the side-by-side Monaco diff viewer showing additions and modifications. Accept or reject specific changes block-by-block, and click **Export PDF** to download your finalized PDF documents.
+
+<p align="center">
+  <img src="public/images/diff-review.png" alt="Monaco Diff Review and PDF Export" width="850" />
+</p>
+
+---
+
+## 🔒 Privacy & Security
+
+- **No Remote Database**: All resume drafts, target job history, and profiles reside locally in your browser storage.
+- **Client-Direct AI Calls**: Resumate communicates directly with Google Gemini using your personal API key via Next.js server actions.
+- **Local Data Wipe**: You can safely clear all stored Resumate local data and API keys at any time from the Settings tab.
+
+---
+
+## 📄 License
+
+MIT License. Feel free to use, modify, and distribute for personal or commercial projects.
